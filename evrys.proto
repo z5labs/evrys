@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package evrys;
+
+option go_package = "github.com/z5labs/evrys/proto";
+
+import "github.com/cloudevents/sdk-go/binding/format/protobuf/v2/pb/cloudevent.proto";
+import "google/protobuf/timestamp.proto";
+
+message RecordEventResponse {}
+
+message GetEventRequest {
+  string event_id = 1;
+}
+
+message GetRecordResponse {
+  pb.CloudEvent record = 1;
+}
+
+message AllWithTraceId {
+  string trace_id = 1;
+}
+
+message AllWithTraceIdAndAfterTimestamp {
+  string trace_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+}
+
+message Filter {
+  oneof value {
+    AllWithTraceId all_with_trace_id = 1;
+    AllWithTraceIdAndAfterTimestamp all_with_trace_id_and_after_timestamp = 2;
+  }
+}
+
+enum Order {
+  None = 0;
+  TimestampDesc = 1;
+  TimestampAsc = 2;
+}
+
+message SliceEventsRequest {
+  repeated Filter filters = 1;
+  Order order = 2;
+}
+
+service Evrys {
+  rpc RecordEvent (pb.CloudEvent) returns (RecordEventResponse);
+
+  rpc GetEvent (GetEventRequest) returns (GetRecordResponse);
+
+  rpc SliceEvents (SliceEventsRequest) returns (stream pb.CloudEvent);
+}
