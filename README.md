@@ -8,6 +8,7 @@
 
 **Caching:**
 - [ ] [Redis](https://redis.io/)
+- [ ] [MemCached](https://memcached.org/)
 
 **Notification Bus:**
 - [ ] [Apache Kafka](https://kafka.apache.org/)
