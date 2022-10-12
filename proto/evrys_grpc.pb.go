@@ -20,7 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EvrysClient interface {
 	RecordEvent(ctx context.Context, in *pb.CloudEvent, opts ...grpc.CallOption) (*RecordEventResponse, error)
-	GetEvent(ctx context.Context, in *GetEventRequest, opts ...grpc.CallOption) (*GetRecordResponse, error)
+	GetEvent(ctx context.Context, in *GetEventRequest, opts ...grpc.CallOption) (*pb.CloudEvent, error)
 	SliceEvents(ctx context.Context, in *SliceEventsRequest, opts ...grpc.CallOption) (Evrys_SliceEventsClient, error)
 }
 
@@ -41,8 +41,8 @@ func (c *evrysClient) RecordEvent(ctx context.Context, in *pb.CloudEvent, opts .
 	return out, nil
 }
 
-func (c *evrysClient) GetEvent(ctx context.Context, in *GetEventRequest, opts ...grpc.CallOption) (*GetRecordResponse, error) {
-	out := new(GetRecordResponse)
+func (c *evrysClient) GetEvent(ctx context.Context, in *GetEventRequest, opts ...grpc.CallOption) (*pb.CloudEvent, error) {
+	out := new(pb.CloudEvent)
 	err := c.cc.Invoke(ctx, "/evrys.Evrys/GetEvent", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (x *evrysSliceEventsClient) Recv() (*pb.CloudEvent, error) {
 // for forward compatibility
 type EvrysServer interface {
 	RecordEvent(context.Context, *pb.CloudEvent) (*RecordEventResponse, error)
-	GetEvent(context.Context, *GetEventRequest) (*GetRecordResponse, error)
+	GetEvent(context.Context, *GetEventRequest) (*pb.CloudEvent, error)
 	SliceEvents(*SliceEventsRequest, Evrys_SliceEventsServer) error
 	mustEmbedUnimplementedEvrysServer()
 }
@@ -99,7 +99,7 @@ type UnimplementedEvrysServer struct {
 func (UnimplementedEvrysServer) RecordEvent(context.Context, *pb.CloudEvent) (*RecordEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RecordEvent not implemented")
 }
-func (UnimplementedEvrysServer) GetEvent(context.Context, *GetEventRequest) (*GetRecordResponse, error) {
+func (UnimplementedEvrysServer) GetEvent(context.Context, *GetEventRequest) (*pb.CloudEvent, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEvent not implemented")
 }
 func (UnimplementedEvrysServer) SliceEvents(*SliceEventsRequest, Evrys_SliceEventsServer) error {
