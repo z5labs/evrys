@@ -38,10 +38,10 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - id: goreleaser
+    - name: Release
+      id: goreleaser
       uses: goreleaser/goreleaser-action@v2
       if: startsWith(github.ref, 'refs/tags/')
-      needs: registry_login
       with:
         distribution: goreleaser
         version: latest
