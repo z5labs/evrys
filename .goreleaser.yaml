@@ -12,6 +12,14 @@ dockers:
   - image_templates:
     - "ghcr.io/z5labs/evrys/evrys:{{ .Tag }}"
     - "ghcr.io/z5labs/evrys/evrys:latest"
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source=\"https://github.com/z5labs/evrys\""
+      - "--label=org.opencontainers.image.licenses=Apache-2.0"
 archives:
   - replacements:
       darwin: darwin
