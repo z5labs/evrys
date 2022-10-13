@@ -18,11 +18,11 @@ metadata:
   name: evrys
 spec:
   containers:
-  {{ if .Values.evrys.grpc.enabled }}
+  {{ if .Values.grpc.enabled }}
   - name: evrys
-    image: "{{ .Values.evrys.image }}:{{ .Values.evrys.tag }}"
-    imagePullPolicy: {{ .Values.image.pullPolicy }}
+    image: "{{ .Values.image }}:{{ .Values.tag }}"
+    imagePullPolicy: {{ .Values.pullPolicy }}
     args: ["serve", "grpc"]
     ports:
-    - containerPort: {{ .Values.evrys.grpc.port }}
+    - containerPort: {{ .Values.grpc.port }}
   {{ end }}

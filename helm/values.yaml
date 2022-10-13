@@ -1,4 +1,4 @@
-# Copyright 2022 carson
+# Copyright 2022 Z5Labs and Contributors
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-image:
-  pullPolicy: "Always"
-
-evrys:
-  image: "ghcr.io/z5labs/evrys/evrys"
-  grpc:
-    enabled: true
-    port: 8080
+image: "ghcr.io/z5labs/evrys/evrys"
+pullPolicy: "Always"
+grpc:
+  enabled: true
+  port: 8080
