@@ -1,3 +1,6 @@
+# Goreleaser
+dist/
+
 # Terraform
 # Local .terraform directories
 **/.terraform/*
