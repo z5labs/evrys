@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+{{ $serviceType := required "must specify service type" .Values.service.type }}
+
 apiVersion: v1
-kind: Pod
+kind: Service
 metadata:
-  name: evrys
+  name: {{ .Chart.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/version: {{ required "Must specify a image tag" .Values.tag }}
 spec:
-  containers:
+  type: {{ $serviceType }}
+  selector:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+  ports:
   {{ if .Values.grpc.enabled }}
-  - name: evrys
-    image: "{{ .Values.image }}:{{ .Values.tag }}"
-    imagePullPolicy: {{ .Values.pullPolicy }}
-    args: ["serve", "grpc"]
-    ports:
-    - containerPort: {{ .Values.grpc.port }}
+  - protocol: TCP
+    port: {{ .Values.grpc.port }}
+    targetPort: {{ .Values.grpc.port }}
   {{ end }}

@@ -17,3 +17,5 @@ pullPolicy: "Always"
 grpc:
   enabled: true
   port: 8080
+service:
+  type: ClusterIP
