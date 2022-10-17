@@ -38,8 +38,9 @@ func (l logLevel) Type() string {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "evrys",
-	Short: "",
+	Use:           "evrys",
+	Short:         "",
+	SilenceErrors: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		var lvl zapcore.Level
 		lvlStr := cmd.Flags().Lookup("log-level").Value.String()

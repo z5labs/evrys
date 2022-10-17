@@ -18,12 +18,36 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
+
+	"github.com/spf13/cobra"
 )
 
+type Error struct {
+	Cmd   *cobra.Command
+	Cause error
+}
+
+func (e Error) Error() string {
+	return fmt.Sprintf("%s: %s", e.Cmd.Use, e.Cause)
+}
+
+func (e Error) Unwrap() error {
+	return e.Cause
+}
+
+// CheckError
+func CheckError(err error) {
+	if err == nil {
+		os.Exit(0)
+	}
+	os.Exit(1)
+}
+
 // Execute
-func Execute(args ...string) {
+func Execute(args ...string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
 
@@ -31,8 +55,5 @@ func Execute(args ...string) {
 		args = os.Args[1:]
 	}
 	rootCmd.SetArgs(args)
-	err := rootCmd.ExecuteContext(ctx)
-	if err != nil {
-		os.Exit(1)
-	}
+	return rootCmd.ExecuteContext(ctx)
 }

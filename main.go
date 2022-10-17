@@ -17,5 +17,5 @@ package main
 import "github.com/z5labs/evrys/cmd"
 
 func main() {
-	cmd.Execute()
+	cmd.CheckError(cmd.Execute())
 }
