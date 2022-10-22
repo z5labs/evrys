@@ -15,18 +15,26 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	evryspb "github.com/z5labs/evrys/proto"
 
 	"github.com/cloudevents/sdk-go/binding/format/protobuf/v2/pb"
+	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type UnableToDialError struct {
@@ -57,51 +65,37 @@ func (e MissingEndpointError) Error() string {
 }
 
 var publishEventsCmd = &cobra.Command{
-	Use:     "events -|EVENT...",
+	Use:     "events -|FILE",
 	Aliases: []string{"event"},
 	Short:   "Publish events to evrys",
-	Args:    cobra.MinimumNArgs(1),
+	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		format, err := getFormat()
+		r, err := openSource(cmd, args[0])
 		if err != nil {
 			return Error{
 				Cmd:   cmd,
 				Cause: err,
 			}
 		}
-
-		events, err := readEvents(cmd.InOrStdin(), format, args...)
-		if err != nil {
-			return Error{
-				Cmd:   cmd,
-				Cause: err,
-			}
-		}
-		zap.L().Info("read events", zap.Int("num_of_events", len(events)))
+		zap.L().Debug("opened source", zap.String("name", args[0]))
 
 		e := getEndpoint()
-		switch e.Type {
-		case grpcEndpoint:
-			zap.L().Info(
-				"publishing events using gRPC",
-				zap.String("endpoint", e.Addr),
-				zap.Int("num_of_events", len(events)),
-			)
-
-			evrys, err := dialEvrys(e.Addr, grpc.WithBlock())
-			if err != nil {
-				return Error{
-					Cmd:   cmd,
-					Cause: err,
-				}
-			}
-			return recordEvents(cmd.Context(), evrys, events...)
-		default:
+		evrys, err := dialEvrys(cmd.Context(), e)
+		if err != nil {
+			zap.L().Error("failed to dial evrys", zap.Error(err))
 			return Error{
 				Cmd:   cmd,
-				Cause: MissingEndpointError{},
+				Cause: err,
 			}
 		}
+		zap.L().Debug("dialed evrys", zap.String("addr", e.Addr))
+
+		eventCh := make(chan event.Event)
+
+		g, gctx := errgroup.WithContext(cmd.Context())
+		g.Go(readEvents(gctx, r, eventCh))
+		g.Go(recordEvents(gctx, evrys, eventCh))
+		return g.Wait()
 	},
 }
 
@@ -109,27 +103,9 @@ func init() {
 	publishCmd.AddCommand(publishEventsCmd)
 
 	publishEventsCmd.Flags().String("grpc-endpoint", "", "gRPC endpoint of evrys service")
-	publishEventsCmd.Flags().String("format", "json", "Input format of events")
 
 	viper.BindPFlag("grpc-endpoint", publishEventsCmd.Flags().Lookup("grpc-endpoint"))
 	viper.BindPFlag("format", publishEventsCmd.Flags().Lookup("format"))
-}
-
-const (
-	jsonFormat  = "json"
-	protoFormat = "proto"
-)
-
-func getFormat() (string, error) {
-	format := strings.ToLower(viper.GetString("format"))
-	switch format {
-	case jsonFormat:
-		return jsonFormat, nil
-	case protoFormat:
-		return protoFormat, nil
-	default:
-		return "", UnsupportedEventFormatError{Format: format}
-	}
 }
 
 const (
@@ -151,22 +127,112 @@ func getEndpoint() endpoint {
 	return e
 }
 
-func readEvents(r io.Reader, format string, args ...string) ([]*pb.CloudEvent, error) {
-	if args[0] == "-" {
-		return []*pb.CloudEvent{}, nil
+var unknownEvrysTargetErr = errors.New("unknown evrys target type")
+
+func dialEvrys(ctx context.Context, e endpoint) (evryspb.EvrysClient, error) {
+	if e.Type != grpcEndpoint {
+		return nil, UnableToDialError{
+			Target: e.Addr,
+			Reason: unknownEvrysTargetErr,
+		}
 	}
 
-	return []*pb.CloudEvent{}, nil
-}
+	dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
-func dialEvrys(target string, opts ...grpc.DialOption) (evryspb.EvrysClient, error) {
-	cc, err := grpc.Dial(target, opts...)
+	cc, err := grpc.DialContext(
+		dialCtx,
+		e.Addr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
-		return nil, UnableToDialError{Target: target, Reason: err}
+		return nil, UnableToDialError{Target: e.Addr, Reason: err}
 	}
 	return evryspb.NewEvrysClient(cc), nil
 }
 
-func recordEvents(ctx context.Context, evrys evryspb.EvrysClient, events ...*pb.CloudEvent) error {
-	return nil
+func openSource(cmd *cobra.Command, name string) (io.Reader, error) {
+	if name == "-" {
+		return cmd.InOrStdin(), nil
+	}
+	absPath, err := filepath.Abs(name)
+	if err != nil {
+		return nil, err
+	}
+	return os.Open(absPath)
+}
+
+func readEvents(ctx context.Context, r io.Reader, eventCh chan<- event.Event) func() error {
+	g, gctx := errgroup.WithContext(ctx)
+	return func() error {
+		defer close(eventCh)
+		defer g.Wait()
+
+		numOfEvents := 0
+		br := bufio.NewReader(r)
+		zap.L().Info("reading events")
+		for {
+			select {
+			case <-gctx.Done():
+			default:
+			}
+
+			line, _, err := br.ReadLine()
+			if err == io.EOF {
+				zap.L().Info("read events", zap.Int("num_of_events", numOfEvents))
+				return nil
+			}
+			if err != nil {
+				zap.L().Error("failed to read line", zap.Error(err))
+				return err
+			}
+
+			var event event.Event
+			err = event.UnmarshalJSON([]byte(line))
+			if err != nil {
+				zap.L().Error("failed to unmarshal event", zap.Error(err))
+				return err
+			}
+			numOfEvents += 1
+
+			g.Go(func() error {
+				select {
+				case <-gctx.Done():
+				case eventCh <- event:
+				}
+				return nil
+			})
+		}
+	}
+}
+
+func recordEvents(ctx context.Context, evrys evryspb.EvrysClient, eventCh <-chan event.Event) func() error {
+	return func() error {
+		numOfEvents := 0
+		zap.L().Info("recording events")
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case event := <-eventCh:
+				if event.Type() == "" {
+					zap.L().Info("recorded events", zap.Int("num_of_events", numOfEvents))
+					return nil
+				}
+				numOfEvents += 1
+
+				// TODO
+				_, err := evrys.RecordEvent(ctx, &pb.CloudEvent{
+					Id:          event.ID(),
+					Source:      event.Source(),
+					SpecVersion: event.SpecVersion(),
+					Type:        event.Type(),
+				})
+				if err != nil {
+					zap.L().Error("failed to record event", zap.Error(err))
+					return err
+				}
+			}
+		}
+	}
 }
