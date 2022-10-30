@@ -23,6 +23,7 @@ import (
 	"os/signal"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 type Error struct {
@@ -54,6 +55,25 @@ func Execute(args ...string) error {
 	if len(args) == 0 {
 		args = os.Args[1:]
 	}
-	rootCmd.SetArgs(args)
-	return rootCmd.ExecuteContext(ctx)
+
+	cmd := buildCli(
+		withServeCommand(
+			withServeGrpcCmd(),
+		),
+		withPublishCmd(
+			withPublishEventsCmd(),
+		),
+	)
+	cmd.SetArgs(args)
+	return cmd.ExecuteContext(ctx)
+}
+
+func buildCli(subcommandBuilders ...func(v *viper.Viper) *cobra.Command) *cobra.Command {
+	v := viper.New()
+	cmd := buildEvrysCmd(v)
+
+	for _, b := range subcommandBuilders {
+		cmd.AddCommand(b(v))
+	}
+	return cmd
 }

@@ -18,11 +18,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
 )
 
 func TestPublishEvents(t *testing.T) {
-	t.Run("will return non-zero exit code", func(t *testing.T) {
+	t.Run("will return an error", func(t *testing.T) {
 		t.Run("if no args are given", func(t *testing.T) {
 			err := Execute("publish", "events")
 			if !assert.Error(t, err) {
@@ -33,8 +32,8 @@ func TestPublishEvents(t *testing.T) {
 			}
 		})
 
-		t.Run("if no evrys endpoint is provided", func(t *testing.T) {
-			err := Execute("publish", "events", "./testdata/events.json")
+		t.Run("if event file path does not exist", func(t *testing.T) {
+			err := Execute("publish", "events", "--grpc-endpoint=\"example.com:8080\"", "randomfile.json")
 			if !assert.Error(t, err) {
 				return
 			}
@@ -43,18 +42,32 @@ func TestPublishEvents(t *testing.T) {
 			}
 
 			cmdErr := err.(Error)
-			if !assert.IsType(t, UnableToDialError{}, cmdErr.Cause) {
+			if !assert.Equal(t, "evrys publish events", cmdErr.Cmd.CommandPath()) {
+				return
+			}
+			// TODO
+		})
+
+		t.Run("if an unknown source format is provided", func(t *testing.T) {
+			err := Execute("publish", "events", "--source=random", "-")
+			if !assert.Error(t, err) {
+				return
+			}
+			if !assert.IsType(t, Error{}, err) {
 				return
 			}
 
-			dialErr := cmdErr.Cause.(UnableToDialError)
-			if !assert.Equal(t, unknownEvrysTargetErr, dialErr.Reason) {
+			cmdErr := err.(Error)
+			if !assert.Equal(t, "evrys publish events", cmdErr.Cmd.CommandPath()) {
+				return
+			}
+			if !assert.IsType(t, UnsupportedEventFormatError{}, cmdErr.Unwrap()) {
 				return
 			}
 		})
 
-		t.Run("if evrys can't be dialed", func(t *testing.T) {
-			err := Execute("publish", "events", "--grpc-endpoint=localhost:8080", "./testdata/events.json")
+		t.Run("if no evrys endpoint is provided", func(t *testing.T) {
+			err := Execute("publish", "events", "-")
 			if !assert.Error(t, err) {
 				return
 			}
@@ -63,7 +76,28 @@ func TestPublishEvents(t *testing.T) {
 			}
 
 			cmdErr := err.(Error)
-			if !assert.Equal(t, grpc.ErrClientConnTimeout, cmdErr.Cause) {
+			if !assert.Equal(t, "evrys publish events", cmdErr.Cmd.CommandPath()) {
+				return
+			}
+			if !assert.IsType(t, MissingEndpointError{}, cmdErr.Unwrap()) {
+				return
+			}
+		})
+
+		t.Run("if the evrys endpoint is unreachable", func(t *testing.T) {
+			err := Execute("publish", "events", "--grpc-endpoint=\"example.com:8080\"", "-")
+			if !assert.Error(t, err) {
+				return
+			}
+			if !assert.IsType(t, Error{}, err) {
+				return
+			}
+
+			cmdErr := err.(Error)
+			if !assert.Equal(t, "evrys publish events", cmdErr.Cmd.CommandPath()) {
+				return
+			}
+			if !assert.IsType(t, UnableToDialError{}, cmdErr.Unwrap()) {
 				return
 			}
 		})
