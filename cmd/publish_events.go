@@ -27,6 +27,7 @@ import (
 	"github.com/z5labs/evrys/encoding"
 	evryspb "github.com/z5labs/evrys/proto"
 
+	format "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -93,7 +94,7 @@ func withPublishEventsCmd() func(*viper.Viper) *cobra.Command {
 				}
 
 				e := getEndpoint(v)
-				evrys, err := dialEvrys(cmd.Context(), e)
+				evrys, cleanupClient, err := dialEvrys(cmd.Context(), e)
 				if err != nil {
 					zap.L().Error("failed to dial evrys", zap.Error(err))
 					return Error{
@@ -101,6 +102,7 @@ func withPublishEventsCmd() func(*viper.Viper) *cobra.Command {
 						Cause: err,
 					}
 				}
+				defer cleanupClient()
 
 				eventCh := make(chan event.Event)
 				g1, g1ctx := errgroup.WithContext(cmd.Context())
@@ -150,8 +152,6 @@ func getDecoder(src io.Reader, format string) (encoding.Decoder, error) {
 	switch format {
 	case "json":
 		return encoding.NewJsonDecoder(src), nil
-	case "proto":
-		return nil, nil // TODO
 	default:
 		return nil, UnsupportedEventFormatError{Format: format}
 	}
@@ -184,9 +184,9 @@ func getEndpoint(v *viper.Viper) endpoint {
 	return e
 }
 
-func dialEvrys(ctx context.Context, e endpoint) (evryspb.EvrysClient, error) {
+func dialEvrys(ctx context.Context, e endpoint) (evryspb.EvrysClient, func(), error) {
 	if e.Type != "grpc" {
-		return nil, MissingEndpointError{}
+		return nil, nil, MissingEndpointError{}
 	}
 
 	dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -199,9 +199,9 @@ func dialEvrys(ctx context.Context, e endpoint) (evryspb.EvrysClient, error) {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return nil, UnableToDialError{Target: e.Addr, Reason: err}
+		return nil, nil, UnableToDialError{Target: e.Addr, Reason: err}
 	}
-	return evryspb.NewEvrysClient(cc), nil
+	return evryspb.NewEvrysClient(cc), func() { cc.Close() }, nil
 }
 
 func readEvents(ctx context.Context, dec encoding.Decoder, eventCh chan<- event.Event) func() error {
@@ -260,8 +260,18 @@ func publishEvents(ctx context.Context, eventCh <-chan event.Event, evrys evrysp
 				}
 
 				zap.L().Debug("publishing event", zap.Int("num_of_events", i))
-				// TODO: map *event.Event to *pb.CloudEvent
-				// TODO: publish event using evrys
+				ce, err := format.ToProto(&ev)
+				if err != nil {
+					zap.L().Error("failed to convert cloudevent to protobuf message", zap.Error(err))
+					return err
+				}
+
+				_, err = evrys.RecordEvent(ctx, ce)
+				if err != nil {
+					zap.L().Error("failed to publish event", zap.Error(err))
+					return err
+				}
+				i += 1
 				zap.L().Debug("published event", zap.Int("num_of_events", i))
 			}
 		}

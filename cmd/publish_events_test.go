@@ -17,11 +17,13 @@ package cmd
 import (
 	"context"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/z5labs/evrys/grpc"
 	evryspb "github.com/z5labs/evrys/proto"
+	"golang.org/x/sync/errgroup"
 
 	cloudeventpb "github.com/cloudevents/sdk-go/binding/format/protobuf/v2/pb"
 	"github.com/stretchr/testify/assert"
@@ -117,76 +119,36 @@ func TestPublishEvents(t *testing.T) {
 				return
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 
-			errCh := make(chan error, 1)
-			go func() {
-				defer close(errCh)
-
+			numOfEvents := int64(0)
+			g, gctx := errgroup.WithContext(ctx)
+			g.Go(func() error {
 				evrys := grpc.MockEvrys(
 					grpc.WithRecordEvent(func(ctx context.Context, ce *cloudeventpb.CloudEvent) (*evryspb.RecordEventResponse, error) {
+						atomic.AddInt64(&numOfEvents, 1)
 						return new(evryspb.RecordEventResponse), nil
 					}),
 				)
-				err := evrys.Serve(ctx, ls)
+				err := evrys.Serve(gctx, ls)
 				if err == grpc.ErrServerStopped {
-					return
+					return nil
 				}
-				errCh <- err
-			}()
-
-			go func() {
+				return err
+			})
+			g.Go(func() error {
 				defer cancel()
 
-				err := Execute("publish", "events", "--source=json", "--grpc-endpoint="+ls.Addr().String(), "testdata/events.json")
-				if !assert.Nil(t, err) {
-					return
-				}
-			}()
+				return ExecuteContext(gctx, "publish", "events", "--source=json", "--grpc-endpoint="+ls.Addr().String(), "testdata/events.json")
+			})
 
-			err = <-errCh
-			if !assert.Nil(t, err) {
-				return
-			}
-		})
-
-		t.Run("if the events are protobuf encoded and byte size prefixed", func(t *testing.T) {
-			ls, err := net.Listen("tcp", ":0")
+			err = g.Wait()
 			if !assert.Nil(t, err) {
 				return
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			errCh := make(chan error, 1)
-			go func() {
-				defer close(errCh)
-
-				evrys := grpc.MockEvrys(
-					grpc.WithRecordEvent(func(ctx context.Context, ce *cloudeventpb.CloudEvent) (*evryspb.RecordEventResponse, error) {
-						return new(evryspb.RecordEventResponse), nil
-					}),
-				)
-				err := evrys.Serve(ctx, ls)
-				if err == grpc.ErrServerStopped {
-					return
-				}
-				errCh <- err
-			}()
-
-			go func() {
-				defer cancel()
-
-				err := Execute("publish", "events", "--source=proto", "--grpc-endpoint="+ls.Addr().String(), "testdata/events.pb")
-				if !assert.Nil(t, err) {
-					return
-				}
-			}()
-
-			err = <-errCh
-			if !assert.Nil(t, err) {
+			if !assert.Greater(t, numOfEvents, int64(0)) {
 				return
 			}
 		})

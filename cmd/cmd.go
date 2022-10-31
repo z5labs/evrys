@@ -49,7 +49,12 @@ func CheckError(err error) {
 
 // Execute
 func Execute(args ...string) error {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	return ExecuteContext(context.Background(), args...)
+}
+
+// ExecuteContext
+func ExecuteContext(pctx context.Context, args ...string) error {
+	ctx, cancel := signal.NotifyContext(pctx, os.Interrupt, os.Kill)
 	defer cancel()
 
 	if len(args) == 0 {
