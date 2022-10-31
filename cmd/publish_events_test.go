@@ -15,8 +15,15 @@
 package cmd
 
 import (
+	"context"
+	"net"
 	"testing"
+	"time"
 
+	"github.com/z5labs/evrys/grpc"
+	evryspb "github.com/z5labs/evrys/proto"
+
+	cloudeventpb "github.com/cloudevents/sdk-go/binding/format/protobuf/v2/pb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -101,5 +108,49 @@ func TestPublishEvents(t *testing.T) {
 				return
 			}
 		})
+	})
+
+	t.Run("will successfully publish events", func(t *testing.T) {
+		t.Run("if the events are json encoded and newline separated", func(t *testing.T) {
+			ls, err := net.Listen("tcp", ":0")
+			if !assert.Nil(t, err) {
+				return
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			errCh := make(chan error, 1)
+			go func() {
+				defer close(errCh)
+
+				evrys := grpc.MockEvrys(
+					grpc.WithRecordEvent(func(ctx context.Context, ce *cloudeventpb.CloudEvent) (*evryspb.RecordEventResponse, error) {
+						return new(evryspb.RecordEventResponse), nil
+					}),
+				)
+				err := evrys.Serve(ctx, ls)
+				if err == grpc.ErrServerStopped {
+					return
+				}
+				errCh <- err
+			}()
+
+			go func() {
+				defer cancel()
+
+				err := Execute("publish", "events", "--source=json", "--grpc-endpoint="+ls.Addr().String(), "testdata/events.json")
+				if !assert.Nil(t, err) {
+					return
+				}
+			}()
+
+			err = <-errCh
+			if !assert.Nil(t, err) {
+				return
+			}
+		})
+
+		t.Run("if the events are protobuf encoded and byte size prefixed", func(t *testing.T) {})
 	})
 }

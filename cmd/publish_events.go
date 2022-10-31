@@ -102,7 +102,7 @@ func withPublishEventsCmd() func(*viper.Viper) *cobra.Command {
 					}
 				}
 
-				eventCh := make(chan *event.Event)
+				eventCh := make(chan event.Event)
 				g1, g1ctx := errgroup.WithContext(cmd.Context())
 				g1.Go(readEvents(g1ctx, dec, eventCh))
 				g1.Go(publishEvents(g1ctx, eventCh, evrys))
@@ -144,13 +144,12 @@ func withPublishEventsCmd() func(*viper.Viper) *cobra.Command {
 	}
 }
 
-func getDecoder(r io.Reader, format string) (encoding.Decoder, error) {
+func getDecoder(src io.Reader, format string) (encoding.Decoder, error) {
 	format = strings.TrimSpace(format)
 	format = strings.ToLower(format)
-	fmt.Println("hello", format)
 	switch format {
 	case "json":
-		return nil, nil // TODO
+		return encoding.NewJsonDecoder(src), nil
 	case "proto":
 		return nil, nil // TODO
 	default:
@@ -205,7 +204,7 @@ func dialEvrys(ctx context.Context, e endpoint) (evryspb.EvrysClient, error) {
 	return evryspb.NewEvrysClient(cc), nil
 }
 
-func readEvents(ctx context.Context, dec encoding.Decoder, eventCh chan<- *event.Event) func() error {
+func readEvents(ctx context.Context, dec encoding.Decoder, eventCh chan<- event.Event) func() error {
 	g, gctx := errgroup.WithContext(ctx)
 	return func() error {
 		defer close(eventCh)
@@ -245,7 +244,7 @@ func readEvents(ctx context.Context, dec encoding.Decoder, eventCh chan<- *event
 	}
 }
 
-func publishEvents(ctx context.Context, eventCh <-chan *event.Event, evrys evryspb.EvrysClient) func() error {
+func publishEvents(ctx context.Context, eventCh <-chan event.Event, evrys evryspb.EvrysClient) func() error {
 	return func() error {
 		i := 0
 		zap.L().Info("publishing events")
@@ -255,7 +254,7 @@ func publishEvents(ctx context.Context, eventCh <-chan *event.Event, evrys evrys
 				zap.L().Info("context cancelled during publishing events", zap.Int("num_of_events", i))
 				return nil
 			case ev := <-eventCh:
-				if ev == nil {
+				if ev.ID() == "" {
 					zap.L().Info("published events", zap.Int("num_of_events", i))
 					return nil
 				}

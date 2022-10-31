@@ -33,7 +33,7 @@ func withServeGrpcCmd() func(*viper.Viper) *cobra.Command {
 			Use:   "grpc",
 			Short: "Serve requests over gRPC",
 			Run: func(cmd *cobra.Command, args []string) {
-				addr := viper.GetString("addr")
+				addr := v.GetString("addr")
 				ls, err := net.Listen("tcp", addr)
 				if err != nil {
 					zap.L().Fatal(
