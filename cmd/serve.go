@@ -29,9 +29,7 @@ func withServeCommand(subcommandBuilders ...func(*viper.Viper) *cobra.Command) f
 		}
 
 		// Flags
-		cmd.Flags().String("addr", "0.0.0.0:8080", "Address to listen for connections.")
-
-		v.BindPFlag("addr", cmd.Flags().Lookup("addr"))
+		cmd.PersistentFlags().String("addr", "0.0.0.0:8080", "Address to listen for connections.")
 
 		for _, b := range subcommandBuilders {
 			cmd.AddCommand(b(v))
