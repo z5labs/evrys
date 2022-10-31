@@ -27,35 +27,37 @@ import (
 	"go.uber.org/zap"
 )
 
-var grpcCmd = &cobra.Command{
-	Use:   "grpc",
-	Short: "Serve requests over gRPC",
-	Run: func(cmd *cobra.Command, args []string) {
-		addr := viper.GetString("addr")
-		ls, err := net.Listen("tcp", addr)
-		if err != nil {
-			zap.L().Fatal(
-				"unexpected error when trying to listen on address",
-				zap.String("addr", addr),
-				zap.Error(err),
-			)
-			return
-		}
-		zap.L().Info("listening for grpc requests", zap.String("addr", addr))
+func withServeGrpcCmd() func(*viper.Viper) *cobra.Command {
+	return func(v *viper.Viper) *cobra.Command {
+		cmd := &cobra.Command{
+			Use:   "grpc",
+			Short: "Serve requests over gRPC",
+			Run: func(cmd *cobra.Command, args []string) {
+				addr := v.GetString("addr")
+				ls, err := net.Listen("tcp", addr)
+				if err != nil {
+					zap.L().Fatal(
+						"unexpected error when trying to listen on address",
+						zap.String("addr", addr),
+						zap.Error(err),
+					)
+					return
+				}
+				zap.L().Info("listening for grpc requests", zap.String("addr", addr))
 
-		evrys := grpc.NewEvrysService(zap.L())
-		err = evrys.Serve(cmd.Context(), ls)
-		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
-			zap.L().Fatal(
-				"unexpected error when serving grpc traffic",
-				zap.String("addr", addr),
-				zap.Error(err),
-			)
-			return
+				evrys := grpc.NewEvrysService(zap.L())
+				err = evrys.Serve(cmd.Context(), ls)
+				if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+					zap.L().Fatal(
+						"unexpected error when serving grpc traffic",
+						zap.String("addr", addr),
+						zap.Error(err),
+					)
+					return
+				}
+			},
 		}
-	},
-}
 
-func init() {
-	serveCmd.AddCommand(grpcCmd)
+		return cmd
+	}
 }

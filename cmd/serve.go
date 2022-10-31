@@ -21,17 +21,22 @@ import (
 	"github.com/spf13/viper"
 )
 
-var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "Serve requests",
-}
+func withServeCommand(subcommandBuilders ...func(*viper.Viper) *cobra.Command) func(*viper.Viper) *cobra.Command {
+	return func(v *viper.Viper) *cobra.Command {
+		cmd := &cobra.Command{
+			Use:   "serve",
+			Short: "Serve requests",
+		}
 
-func init() {
-	rootCmd.AddCommand(serveCmd)
+		// Flags
+		cmd.Flags().String("addr", "0.0.0.0:8080", "Address to listen for connections.")
 
-	// Flags
-	serveCmd.Flags().String("addr", "0.0.0.0:8080", "Address to listen for connections.")
+		v.BindPFlag("addr", cmd.Flags().Lookup("addr"))
 
-	viper.BindPFlag("addr", serveCmd.Flags().Lookup("addr"))
+		for _, b := range subcommandBuilders {
+			cmd.AddCommand(b(v))
+		}
 
+		return cmd
+	}
 }

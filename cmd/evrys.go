@@ -37,34 +37,36 @@ func (l logLevel) Type() string {
 	return "Level"
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "evrys",
-	Short: "",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		var lvl zapcore.Level
-		lvlStr := cmd.Flags().Lookup("log-level").Value.String()
-		err := lvl.UnmarshalText([]byte(lvlStr))
-		if err != nil {
-			panic(err)
-		}
+func buildEvrysCmd(v *viper.Viper) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:           "evrys",
+		Short:         "",
+		SilenceErrors: true,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			var lvl zapcore.Level
+			lvlStr := cmd.Flags().Lookup("log-level").Value.String()
+			err := lvl.UnmarshalText([]byte(lvlStr))
+			if err != nil {
+				panic(err)
+			}
 
-		cfg := zap.NewProductionConfig()
-		cfg.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
-		cfg.OutputPaths = []string{viper.GetString("log-file")}
-		l, err := cfg.Build(zap.IncreaseLevel(lvl))
-		if err != nil {
-			panic(err)
-		}
+			cfg := zap.NewProductionConfig()
+			cfg.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+			cfg.OutputPaths = []string{v.GetString("log-file")}
+			l, err := cfg.Build(zap.IncreaseLevel(lvl))
+			if err != nil {
+				panic(err)
+			}
 
-		zap.ReplaceGlobals(l)
-	},
-}
+			zap.ReplaceGlobals(l)
+		},
+	}
 
-func init() {
-	// Persistent flags
 	lvl := logLevel(zapcore.InfoLevel)
-	rootCmd.PersistentFlags().Var(&lvl, "log-level", "Specify log level")
-	rootCmd.PersistentFlags().String("log-file", "stderr", "Specify log file")
+	cmd.PersistentFlags().Var(&lvl, "log-level", "Specify log level")
+	cmd.PersistentFlags().String("log-file", "stderr", "Specify log file")
 
-	viper.BindPFlag("log-file", rootCmd.PersistentFlags().Lookup("log-file"))
+	v.BindPFlag("log-file", cmd.PersistentFlags().Lookup("log-file"))
+
+	return cmd
 }

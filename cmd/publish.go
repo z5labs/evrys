@@ -14,13 +14,22 @@
 
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
 
-var publishCmd = &cobra.Command{
-	Use:   "publish",
-	Short: "Publish events or notifications",
-}
+func withPublishCmd(subcommandBuilders ...func(*viper.Viper) *cobra.Command) func(*viper.Viper) *cobra.Command {
+	return func(v *viper.Viper) *cobra.Command {
+		cmd := &cobra.Command{
+			Use:   "publish",
+			Short: "Publish events or notifications",
+		}
 
-func init() {
-	rootCmd.AddCommand(publishCmd)
+		for _, b := range subcommandBuilders {
+			cmd.AddCommand(b(v))
+		}
+
+		return cmd
+	}
 }
