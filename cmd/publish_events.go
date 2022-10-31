@@ -139,9 +139,6 @@ func withPublishEventsCmd() func(*viper.Viper) *cobra.Command {
 		cmd.Flags().String("grpc-endpoint", "", "gRPC endpoint of evrys service")
 		cmd.Flags().String("source", "json", "Source format of events")
 
-		v.BindPFlag("grpc-endpoint", cmd.Flags().Lookup("grpc-endpoint"))
-		v.BindPFlag("source", cmd.Flags().Lookup("source"))
-
 		return cmd
 	}
 }

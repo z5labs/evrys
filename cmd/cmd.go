@@ -64,6 +64,7 @@ func ExecuteContext(pctx context.Context, args ...string) error {
 	cmd := buildCli(
 		withServeCommand(
 			withServeGrpcCmd(),
+			withServeDashboardCmd(),
 		),
 		withPublishCmd(
 			withPublishEventsCmd(),
@@ -81,4 +82,9 @@ func buildCli(subcommandBuilders ...func(v *viper.Viper) *cobra.Command) *cobra.
 		cmd.AddCommand(b(v))
 	}
 	return cmd
+}
+
+func bindFlags(v *viper.Viper, cmd *cobra.Command) {
+	v.BindPFlags(cmd.Flags())
+	v.BindPFlags(cmd.PersistentFlags())
 }

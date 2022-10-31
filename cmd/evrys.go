@@ -43,6 +43,8 @@ func buildEvrysCmd(v *viper.Viper) *cobra.Command {
 		Short:         "",
 		SilenceErrors: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			bindFlags(v, cmd)
+
 			var lvl zapcore.Level
 			lvlStr := cmd.Flags().Lookup("log-level").Value.String()
 			err := lvl.UnmarshalText([]byte(lvlStr))
@@ -65,8 +67,6 @@ func buildEvrysCmd(v *viper.Viper) *cobra.Command {
 	lvl := logLevel(zapcore.InfoLevel)
 	cmd.PersistentFlags().Var(&lvl, "log-level", "Specify log level")
 	cmd.PersistentFlags().String("log-file", "stderr", "Specify log file")
-
-	v.BindPFlag("log-file", cmd.PersistentFlags().Lookup("log-file"))
 
 	return cmd
 }
