@@ -54,8 +54,20 @@ message SliceEventsRequest {
   Order order = 2;
 }
 
+message Notification {
+  string event_id = 1;
+  string event_type = 2;
+  string event_source = 3;
+}
+
 service Evrys {
+  // RecordEvent will only record the given event to an append only log.
   rpc RecordEvent (pb.CloudEvent) returns (RecordEventResponse);
+
+  // RecordEventAndPublishNotification will record the event and also publish a notification
+  // to a notification bus that a new event was just recorded.
+  //
+  rpc RecordEventAndPublishNotification (pb.CloudEvent) returns (RecordEventResponse);
 
   rpc GetEvent (GetEventRequest) returns (pb.CloudEvent);
 

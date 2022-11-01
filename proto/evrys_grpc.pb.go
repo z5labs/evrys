@@ -19,7 +19,12 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EvrysClient interface {
+	// RecordEvent will only record the given event to an append only log.
 	RecordEvent(ctx context.Context, in *pb.CloudEvent, opts ...grpc.CallOption) (*RecordEventResponse, error)
+	// RecordEventAndPublishNotification will record the event and also publish a notification
+	// to a notification bus that a new event was just recorded.
+	//
+	RecordEventAndPublishNotification(ctx context.Context, in *pb.CloudEvent, opts ...grpc.CallOption) (*RecordEventResponse, error)
 	GetEvent(ctx context.Context, in *GetEventRequest, opts ...grpc.CallOption) (*pb.CloudEvent, error)
 	SliceEvents(ctx context.Context, in *SliceEventsRequest, opts ...grpc.CallOption) (Evrys_SliceEventsClient, error)
 }
@@ -35,6 +40,15 @@ func NewEvrysClient(cc grpc.ClientConnInterface) EvrysClient {
 func (c *evrysClient) RecordEvent(ctx context.Context, in *pb.CloudEvent, opts ...grpc.CallOption) (*RecordEventResponse, error) {
 	out := new(RecordEventResponse)
 	err := c.cc.Invoke(ctx, "/evrys.Evrys/RecordEvent", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *evrysClient) RecordEventAndPublishNotification(ctx context.Context, in *pb.CloudEvent, opts ...grpc.CallOption) (*RecordEventResponse, error) {
+	out := new(RecordEventResponse)
+	err := c.cc.Invoke(ctx, "/evrys.Evrys/RecordEventAndPublishNotification", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +100,12 @@ func (x *evrysSliceEventsClient) Recv() (*pb.CloudEvent, error) {
 // All implementations must embed UnimplementedEvrysServer
 // for forward compatibility
 type EvrysServer interface {
+	// RecordEvent will only record the given event to an append only log.
 	RecordEvent(context.Context, *pb.CloudEvent) (*RecordEventResponse, error)
+	// RecordEventAndPublishNotification will record the event and also publish a notification
+	// to a notification bus that a new event was just recorded.
+	//
+	RecordEventAndPublishNotification(context.Context, *pb.CloudEvent) (*RecordEventResponse, error)
 	GetEvent(context.Context, *GetEventRequest) (*pb.CloudEvent, error)
 	SliceEvents(*SliceEventsRequest, Evrys_SliceEventsServer) error
 	mustEmbedUnimplementedEvrysServer()
@@ -98,6 +117,9 @@ type UnimplementedEvrysServer struct {
 
 func (UnimplementedEvrysServer) RecordEvent(context.Context, *pb.CloudEvent) (*RecordEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RecordEvent not implemented")
+}
+func (UnimplementedEvrysServer) RecordEventAndPublishNotification(context.Context, *pb.CloudEvent) (*RecordEventResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RecordEventAndPublishNotification not implemented")
 }
 func (UnimplementedEvrysServer) GetEvent(context.Context, *GetEventRequest) (*pb.CloudEvent, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEvent not implemented")
@@ -132,6 +154,24 @@ func _Evrys_RecordEvent_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EvrysServer).RecordEvent(ctx, req.(*pb.CloudEvent))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Evrys_RecordEventAndPublishNotification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.CloudEvent)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EvrysServer).RecordEventAndPublishNotification(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/evrys.Evrys/RecordEventAndPublishNotification",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EvrysServer).RecordEventAndPublishNotification(ctx, req.(*pb.CloudEvent))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -185,6 +225,10 @@ var Evrys_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RecordEvent",
 			Handler:    _Evrys_RecordEvent_Handler,
+		},
+		{
+			MethodName: "RecordEventAndPublishNotification",
+			Handler:    _Evrys_RecordEventAndPublishNotification_Handler,
 		},
 		{
 			MethodName: "GetEvent",
