@@ -19,7 +19,6 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -39,29 +38,10 @@ func (l logLevel) Type() string {
 
 func buildEvrysCmd(v *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:           "evrys",
-		Short:         "",
-		SilenceErrors: true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			bindFlags(v, cmd)
-
-			var lvl zapcore.Level
-			lvlStr := cmd.Flags().Lookup("log-level").Value.String()
-			err := lvl.UnmarshalText([]byte(lvlStr))
-			if err != nil {
-				panic(err)
-			}
-
-			cfg := zap.NewProductionConfig()
-			cfg.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
-			cfg.OutputPaths = []string{v.GetString("log-file")}
-			l, err := cfg.Build(zap.IncreaseLevel(lvl))
-			if err != nil {
-				panic(err)
-			}
-
-			zap.ReplaceGlobals(l)
-		},
+		Use:              "evrys",
+		Short:            "",
+		SilenceErrors:    true,
+		PersistentPreRun: withPersistentPreRun()(v),
 	}
 
 	lvl := logLevel(zapcore.InfoLevel)

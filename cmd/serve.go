@@ -26,10 +26,14 @@ func withServeCommand(subcommandBuilders ...func(*viper.Viper) *cobra.Command) f
 		cmd := &cobra.Command{
 			Use:   "serve",
 			Short: "Serve requests",
+			PersistentPreRun: withPersistentPreRun(
+				loadConfigFile(v),
+			)(v),
 		}
 
 		// Flags
 		cmd.PersistentFlags().String("addr", "0.0.0.0:8080", "Address to listen for connections.")
+		cmd.PersistentFlags().String("config-file", "", "Specify config file")
 
 		for _, b := range subcommandBuilders {
 			cmd.AddCommand(b(v))

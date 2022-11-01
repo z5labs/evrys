@@ -17,6 +17,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 func withServeDashboardCmd() func(*viper.Viper) *cobra.Command {
@@ -25,7 +26,10 @@ func withServeDashboardCmd() func(*viper.Viper) *cobra.Command {
 			Use:   "dashboard",
 			Short: "Serve a web based dashboard for easily interacting with evrys",
 			Args:  cobra.ExactArgs(0),
-			RunE:  serveDashboard(v),
+			PersistentPreRun: withPersistentPreRun(
+				loadConfigFile(v),
+			)(v),
+			RunE: serveDashboard(v),
 		}
 
 		cmd.Flags().String("grpc-endpoint", "", "gRPC endpoint of evrys service")
@@ -39,6 +43,7 @@ func serveDashboard(v *viper.Viper) func(*cobra.Command, []string) error {
 		e := getEndpoint(v)
 		_, cleanupConn, err := dialEvrys(cmd.Context(), e)
 		if err != nil {
+			zap.L().Error("failed to dial evrys", zap.String("addr", e.Addr), zap.Error(err))
 			return Error{
 				Cmd:   cmd,
 				Cause: err,

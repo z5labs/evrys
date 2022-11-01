@@ -67,10 +67,11 @@ func (e MissingEndpointError) Error() string {
 func withPublishEventsCmd() func(*viper.Viper) *cobra.Command {
 	return func(v *viper.Viper) *cobra.Command {
 		cmd := &cobra.Command{
-			Use:     "events -|FILE...",
-			Aliases: []string{"event"},
-			Short:   "Publish events to evrys",
-			Args:    cobra.ExactArgs(1),
+			Use:              "events -|FILE...",
+			Aliases:          []string{"event"},
+			Short:            "Publish events to evrys",
+			Args:             cobra.ExactArgs(1),
+			PersistentPreRun: withPersistentPreRun()(v),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				src := cmd.InOrStdin()
 				filename := strings.TrimSpace(args[0])
