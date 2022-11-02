@@ -18,7 +18,7 @@ metadata:
   name: {{ .Chart.Name }}
   labels:
     app.kubernetes.io/name: {{ .Chart.Name }}
-    app.kubernetes.io/version: {{ required "Must specify a image tag" .Values.tag }}
+    app.kubernetes.io/version: {{ default .Chart.AppVersion .Values.tag }}
 spec:
   selector:
     matchLabels:
@@ -29,11 +29,9 @@ spec:
         app.kubernetes.io/name: {{ .Chart.Name }}
     spec:
       containers:
-      {{ if .Values.grpc.enabled }}
       - name: evrys
-        image: "{{ .Values.image }}:{{ required "Must specify a image tag" .Values.tag }}"
+        image: "{{ .Values.image }}:{{ default .Chart.AppVersion .Values.tag }}"
         imagePullPolicy: {{ .Values.pullPolicy }}
         args: ["serve", "grpc"]
         ports:
         - containerPort: {{ .Values.grpc.port }}
-      {{ end }}

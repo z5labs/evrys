@@ -17,3 +17,4 @@ name: evrys
 description: A Helm chart for evrys
 type: application
 version: 0.1.0
+appVersion: "v0.0.0-rc.4"

@@ -20,14 +20,12 @@ metadata:
   name: {{ .Chart.Name }}
   labels:
     app.kubernetes.io/name: {{ .Chart.Name }}
-    app.kubernetes.io/version: {{ required "Must specify a image tag" .Values.tag }}
+    app.kubernetes.io/version: {{ default .Chart.AppVersion .Values.tag }}
 spec:
   type: {{ $serviceType }}
   selector:
     app.kubernetes.io/name: {{ .Chart.Name }}
   ports:
-  {{ if .Values.grpc.enabled }}
   - protocol: TCP
-    port: {{ .Values.grpc.port }}
+    port: {{ default .Chart.AppVersion .Values.grpc.port }}
     targetPort: {{ .Values.grpc.port }}
-  {{ end }}

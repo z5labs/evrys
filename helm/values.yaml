@@ -13,6 +13,7 @@
 # limitations under the License.
 
 image: "ghcr.io/z5labs/evrys/evrys"
+tag: ""
 pullPolicy: "Always"
 grpc:
   enabled: true
