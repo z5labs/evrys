@@ -22,9 +22,9 @@ import (
 func withPublishCmd(subcommandBuilders ...func(*viper.Viper) *cobra.Command) func(*viper.Viper) *cobra.Command {
 	return func(v *viper.Viper) *cobra.Command {
 		cmd := &cobra.Command{
-			Use:              "publish",
-			Short:            "Publish events or notifications",
-			PersistentPreRun: withPersistentPreRun()(v),
+			Use:               "publish",
+			Short:             "Publish events or notifications",
+			PersistentPreRunE: withPersistentPreRun()(v),
 		}
 
 		for _, b := range subcommandBuilders {

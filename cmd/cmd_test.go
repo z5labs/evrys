@@ -33,25 +33,7 @@ func TestLoadConfigFile(t *testing.T) {
 
 			v := viper.New()
 
-			f := func() (err error) {
-				defer func() {
-					r := recover()
-					if !assert.NotNil(t, r) {
-						return
-					}
-
-					e, ok := r.(error)
-					if !assert.True(t, ok) {
-						return
-					}
-					err = e
-				}()
-
-				loadConfigFile(v)(cmd, nil)
-				return
-			}
-
-			err := f()
+			err := loadConfigFile(v)(cmd, nil)
 			if !assert.Error(t, err) {
 				return
 			}
@@ -69,25 +51,7 @@ func TestLoadConfigFile(t *testing.T) {
 
 			v := viper.New()
 
-			f := func() (err error) {
-				defer func() {
-					r := recover()
-					if !assert.NotNil(t, r) {
-						return
-					}
-
-					e, ok := r.(error)
-					if !assert.True(t, ok) {
-						return
-					}
-					err = e
-				}()
-
-				loadConfigFile(v)(cmd, nil)
-				return
-			}
-
-			err := f()
+			err := loadConfigFile(v)(cmd, nil)
 			if !assert.Error(t, err) {
 				return
 			}
@@ -107,25 +71,7 @@ func TestLoadConfigFile(t *testing.T) {
 
 			v := viper.New()
 
-			f := func() (err error) {
-				defer func() {
-					r := recover()
-					if assert.Nil(t, r) {
-						return
-					}
-
-					e, ok := r.(error)
-					if !ok {
-						return
-					}
-					err = e
-				}()
-
-				loadConfigFile(v)(cmd, nil)
-				return
-			}
-
-			err := f()
+			err := loadConfigFile(v)(cmd, nil)
 			if !assert.Nil(t, err) {
 				return
 			}
@@ -145,25 +91,7 @@ func TestLoadConfigFile(t *testing.T) {
 
 			v := viper.New()
 
-			f := func() (err error) {
-				defer func() {
-					r := recover()
-					if assert.Nil(t, r) {
-						return
-					}
-
-					e, ok := r.(error)
-					if !ok {
-						return
-					}
-					err = e
-				}()
-
-				loadConfigFile(v)(cmd, nil)
-				return
-			}
-
-			err := f()
+			err := loadConfigFile(v)(cmd, nil)
 			if !assert.Nil(t, err) {
 				return
 			}

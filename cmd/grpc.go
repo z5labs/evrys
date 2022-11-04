@@ -32,7 +32,7 @@ func withServeGrpcCmd() func(*viper.Viper) *cobra.Command {
 		cmd := &cobra.Command{
 			Use:   "grpc",
 			Short: "Serve requests over gRPC",
-			PersistentPreRun: withPersistentPreRun(
+			PersistentPreRunE: withPersistentPreRun(
 				loadConfigFile(v),
 			)(v),
 			Run: func(cmd *cobra.Command, args []string) {

@@ -26,7 +26,7 @@ func withServeCommand(subcommandBuilders ...func(*viper.Viper) *cobra.Command) f
 		cmd := &cobra.Command{
 			Use:   "serve",
 			Short: "Serve requests",
-			PersistentPreRun: withPersistentPreRun(
+			PersistentPreRunE: withPersistentPreRun(
 				loadConfigFile(v),
 			)(v),
 		}

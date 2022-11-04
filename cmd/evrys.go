@@ -38,10 +38,10 @@ func (l logLevel) Type() string {
 
 func buildEvrysCmd(v *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:              "evrys",
-		Short:            "",
-		SilenceErrors:    true,
-		PersistentPreRun: withPersistentPreRun()(v),
+		Use:               "evrys",
+		Short:             "",
+		SilenceErrors:     true,
+		PersistentPreRunE: withPersistentPreRun()(v),
 	}
 
 	lvl := logLevel(zapcore.InfoLevel)

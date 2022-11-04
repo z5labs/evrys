@@ -26,7 +26,7 @@ func withServeDashboardCmd() func(*viper.Viper) *cobra.Command {
 			Use:   "dashboard",
 			Short: "Serve a web based dashboard for easily interacting with evrys",
 			Args:  cobra.ExactArgs(0),
-			PersistentPreRun: withPersistentPreRun(
+			PersistentPreRunE: withPersistentPreRun(
 				loadConfigFile(v),
 			)(v),
 			RunE: serveDashboard(v),

@@ -86,36 +86,43 @@ func buildCli(subcommandBuilders ...func(v *viper.Viper) *cobra.Command) *cobra.
 	return cmd
 }
 
-func withPersistentPreRun(fs ...func(*cobra.Command, []string)) func(*viper.Viper) func(*cobra.Command, []string) {
-	return func(v *viper.Viper) func(*cobra.Command, []string) {
-		preRuns := []func(*cobra.Command, []string){
+type preRunFunc func(*cobra.Command, []string) error
+
+func withPersistentPreRun(fs ...preRunFunc) func(*viper.Viper) preRunFunc {
+	return func(v *viper.Viper) preRunFunc {
+		preRuns := []preRunFunc{
 			bindFlags(v),
 			initLogging(v),
 		}
 		preRuns = append(preRuns, fs...)
 
-		return func(cmd *cobra.Command, args []string) {
+		return func(cmd *cobra.Command, args []string) error {
 			for _, f := range preRuns {
-				f(cmd, args)
+				err := f(cmd, args)
+				if err != nil {
+					return err
+				}
 			}
+			return nil
 		}
 	}
 }
 
-func bindFlags(v *viper.Viper) func(*cobra.Command, []string) {
-	return func(cmd *cobra.Command, args []string) {
+func bindFlags(v *viper.Viper) preRunFunc {
+	return func(cmd *cobra.Command, args []string) error {
 		v.BindPFlags(cmd.Flags())
 		v.BindPFlags(cmd.PersistentFlags())
+		return nil
 	}
 }
 
-func initLogging(v *viper.Viper) func(*cobra.Command, []string) {
-	return func(cmd *cobra.Command, args []string) {
+func initLogging(v *viper.Viper) preRunFunc {
+	return func(cmd *cobra.Command, args []string) error {
 		var lvl zapcore.Level
 		lvlStr := cmd.Flags().Lookup("log-level").Value.String()
 		err := lvl.UnmarshalText([]byte(lvlStr))
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		cfg := zap.NewProductionConfig()
@@ -123,28 +130,30 @@ func initLogging(v *viper.Viper) func(*cobra.Command, []string) {
 		cfg.OutputPaths = []string{v.GetString("log-file")}
 		l, err := cfg.Build(zap.IncreaseLevel(lvl))
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		zap.ReplaceGlobals(l)
+		return nil
 	}
 }
 
-func loadConfigFile(v *viper.Viper) func(*cobra.Command, []string) {
-	return func(cmd *cobra.Command, args []string) {
+func loadConfigFile(v *viper.Viper) preRunFunc {
+	return func(cmd *cobra.Command, args []string) error {
 		flag := cmd.Flag("config-file")
 		if flag == nil {
-			return
+			return nil
 		}
 		if !flag.Changed {
-			return
+			return nil
 		}
 
 		v.SetConfigFile(flag.Value.String())
 		v.SetConfigType("yaml")
 		err := v.ReadInConfig()
 		if err != nil {
-			panic(err)
+			return err
 		}
+		return nil
 	}
 }
