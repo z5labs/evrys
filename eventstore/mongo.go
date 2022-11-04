@@ -43,7 +43,7 @@ func NewMongoEventStoreImpl(ctx context.Context, _config *MongoConfig) (*MongoEv
 
 	err := impl.init(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to init mongo event store, %w", err)
+		return nil, NewInitializationError("mongo", err)
 	}
 
 	return impl, nil
@@ -54,7 +54,7 @@ func (m *MongoEventStoreImpl) init(ctx context.Context) error {
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(m.config.getURI()))
 	if err != nil {
 		m.logger.Error("failed to connect to mongo", zap.Error(err))
-		return fmt.Errorf("failed to connect to mongo, %w", err)
+		return NewConnectionError("mongo", err)
 	}
 	m.logger.Debug("successfully connected to mongo")
 
@@ -70,7 +70,7 @@ func (m *MongoEventStoreImpl) PutEvent(ctx context.Context, event *event.Event) 
 	raw, err := event.MarshalJSON()
 	if err != nil {
 		m.logger.Error("failed to marshal event to json", zap.Error(err))
-		return fmt.Errorf("failed to marshal event to json, %w", err)
+		return NewMarshalError("*event.Event", "json", err)
 	}
 	m.logger.Debug("successfully marshaled event to json")
 
@@ -79,7 +79,7 @@ func (m *MongoEventStoreImpl) PutEvent(ctx context.Context, event *event.Event) 
 	err = bson.UnmarshalExtJSON(raw, true, &bdoc)
 	if err != nil {
 		m.logger.Error("failed to marshal json to bson", zap.Error(err))
-		return fmt.Errorf("failed to marshal json to bson, %w", err)
+		return NewMarshalError("json", "bson", err)
 	}
 	m.logger.Debug("successfully marshaled json to bson")
 
@@ -87,7 +87,7 @@ func (m *MongoEventStoreImpl) PutEvent(ctx context.Context, event *event.Event) 
 	_, err = coll.InsertOne(ctx, bdoc)
 	if err != nil {
 		m.logger.Error("failed to insert event", zap.Error(err))
-		return fmt.Errorf("failed to insert event, %w", err)
+		return NewPutError("mongo", "event", err)
 	}
 	m.logger.Debug("successfully inserted event")
 
