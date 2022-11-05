@@ -32,6 +32,9 @@ func withServeGrpcCmd() func(*viper.Viper) *cobra.Command {
 		cmd := &cobra.Command{
 			Use:   "grpc",
 			Short: "Serve requests over gRPC",
+			PersistentPreRunE: withPersistentPreRun(
+				loadConfigFile(v),
+			)(v),
 			Run: func(cmd *cobra.Command, args []string) {
 				addr := v.GetString("addr")
 				ls, err := net.Listen("tcp", addr)
