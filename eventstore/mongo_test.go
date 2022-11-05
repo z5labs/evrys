@@ -151,7 +151,8 @@ func TestNewMongoEventStoreImpl(t *testing.T) {
 			Collection: "testcoll",
 		}
 		_, err := NewMongoEventStoreImpl(context.TODO(), &conf)
-		req.ErrorContains(err, "failed to connect to mongo", "expected connection error")
+		var connErr *ConnectionError
+		req.ErrorAs(err, &connErr, "expected connection error")
 	})
 }
 
