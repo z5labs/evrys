@@ -23,6 +23,11 @@ func (c *ConnectionError) Error() string {
 	return fmt.Sprintf("failed to connect to %s. %s", c.Source, c.Err)
 }
 
+// Unwrap returns the inner error
+func (c *ConnectionError) Unwrap() error {
+	return c.Err
+}
+
 // MarshalError defines an error when marshaling from one type to another
 type MarshalError struct {
 	From string
@@ -65,21 +70,22 @@ func (p *PutError) Error() string {
 	return fmt.Sprintf("failed to put %s into %s. %s", p.InsertedType, p.Source, p.Err)
 }
 
-// InitializationError defines an error when initialzing a client
-type InitializationError struct {
-	Source string
-	Err    error
+// ValidationError defines an error where a config is not valid
+type ValidationError struct {
+	Type   string
+	Field  string
+	Reason string
 }
 
-// NewInitializationError returns a new InitializationError
-func NewInitializationError(source string, err error) *InitializationError {
-	return &InitializationError{
-		Source: source,
-		Err:    err,
+// NewValidationError creates a new ValidationError
+func NewValidationError(_type, field, reason string) *ValidationError {
+	return &ValidationError{
+		Type:   _type,
+		Field:  field,
+		Reason: reason,
 	}
 }
 
-// Error returns a string form of the error and implements the error interface
-func (i *InitializationError) Error() string {
-	return fmt.Sprintf("failed to init %s. %s", i.Source, i.Err)
+func (v *ValidationError) Error() string {
+	return fmt.Sprintf("field %s on type %s not valid. Reason: %s", v.Field, v.Type, v.Reason)
 }

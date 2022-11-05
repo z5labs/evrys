@@ -15,7 +15,147 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-func TestMongo(t *testing.T) {
+func TestMongoConfig_Validate(t *testing.T) {
+	req := require.New(t)
+
+	t.Run("invalid config - no host", func(t *testing.T) {
+		conf := MongoConfig{
+			Port:       "1234",
+			Username:   "username",
+			Password:   "dfasdfad",
+			Database:   "dfasdfas",
+			Collection: "dfads",
+		}
+		var valError *ValidationError
+		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+	})
+
+	t.Run("invalid config - port none", func(t *testing.T) {
+		conf := MongoConfig{
+			Host:       "dasdfas",
+			Username:   "username",
+			Password:   "dfasdfad",
+			Database:   "dfasdfas",
+			Collection: "dfads",
+		}
+		var valError *ValidationError
+		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+	})
+
+	t.Run("invalid config - port invalid", func(t *testing.T) {
+		conf := MongoConfig{
+			Host:       "dasdfas",
+			Port:       "1234cdads5",
+			Username:   "username",
+			Password:   "dfasdfad",
+			Database:   "dfasdfas",
+			Collection: "dfads",
+		}
+		var valError *ValidationError
+		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+	})
+
+	t.Run("invalid config - no username", func(t *testing.T) {
+		conf := MongoConfig{
+			Host:       "dasdfas",
+			Port:       "1234",
+			Password:   "dfasdfad",
+			Database:   "dfasdfas",
+			Collection: "dfads",
+		}
+		var valError *ValidationError
+		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+	})
+
+	t.Run("invalid config - no password", func(t *testing.T) {
+		conf := MongoConfig{
+			Host:       "dasdfas",
+			Port:       "1234",
+			Username:   "username",
+			Database:   "dfasdfas",
+			Collection: "dfads",
+		}
+		var valError *ValidationError
+		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+	})
+
+	t.Run("invalid config - no database", func(t *testing.T) {
+		conf := MongoConfig{
+			Host:       "dasdfas",
+			Port:       "1234",
+			Username:   "username",
+			Password:   "dfasdfad",
+			Collection: "dfads",
+		}
+		var valError *ValidationError
+		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+	})
+
+	t.Run("invalid config - no collection", func(t *testing.T) {
+		conf := MongoConfig{
+			Host:     "dasdfas",
+			Port:     "1234",
+			Username: "username",
+			Password: "dfasdfad",
+			Database: "dfasdfas",
+		}
+		var valError *ValidationError
+		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+	})
+
+	t.Run("valid config", func(t *testing.T) {
+		conf := MongoConfig{
+			Host:       "something",
+			Port:       "1234",
+			Username:   "username",
+			Password:   "dfasdfad",
+			Database:   "dfasdfas",
+			Collection: "dfads",
+		}
+		req.NoError(conf.Validate(), "config should have validated")
+	})
+}
+
+func TestNewMongoEventStoreImpl(t *testing.T) {
+	req := require.New(t)
+	t.Run("nil ctx", func(t *testing.T) {
+		_, err := NewMongoEventStoreImpl(nil, nil)
+		req.ErrorContains(err, "context can not be nil", "error is not target error")
+	})
+
+	t.Run("nil config", func(t *testing.T) {
+		_, err := NewMongoEventStoreImpl(context.TODO(), nil)
+		req.ErrorContains(err, "config can not be nil", "error is not target error")
+	})
+
+	t.Run("invalid config", func(t *testing.T) {
+		conf := MongoConfig{
+			Host:       "something",
+			Port:       "1234",
+			Username:   "username",
+			Database:   "dfasdfas",
+			Collection: "dfads",
+		}
+		_, err := NewMongoEventStoreImpl(context.TODO(), &conf)
+		var valError *ValidationError
+		req.ErrorAs(err, &valError, "expected validation error")
+	})
+
+	t.Run("mongo connection error", func(t *testing.T) {
+		conf := MongoConfig{
+			Host:       "localhost",
+			Port:       "27017",
+			Password:   "asdfasdf",
+			Username:   "username",
+			Database:   "testdb",
+			Collection: "testcoll",
+		}
+		_, err := NewMongoEventStoreImpl(context.TODO(), &conf)
+		req.ErrorContains(err, "failed to connect to mongo", "expected connection error")
+	})
+}
+
+func TestMongoIntegration(t *testing.T) {
 	// setup
 	req := require.New(t)
 	ctx := context.Background()

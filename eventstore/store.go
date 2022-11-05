@@ -8,6 +8,6 @@ import (
 
 // PutEvent puts an event into an event store
 type PutEvent interface {
-	// PutEvent pushes an event to the event store and assumes that the event has already been validated before recieving
+	// PutEvent pushes an event to the event store and assumes that the event has already been validated before receiving
 	PutEvent(ctx context.Context, event *event.Event) error
 }
