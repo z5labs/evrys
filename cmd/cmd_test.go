@@ -22,6 +22,46 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestInitLogging(t *testing.T) {
+	t.Run("will fail to initialize logger", func(t *testing.T) {
+		t.Run("if a unknown logging level is set", func(t *testing.T) {
+			cmd := &cobra.Command{}
+
+			s := cmd.Flags().String("log-level", "", "")
+			*s = "test"
+
+			err := initLogging(viper.New())(cmd, nil)
+			if !assert.Error(t, err) {
+				return
+			}
+			if !assert.IsType(t, UnknownLogLevelError{}, err) {
+				return
+			}
+
+			lvlErr := err.(UnknownLogLevelError)
+			if !assert.Equal(t, *s, lvlErr.Level) {
+				return
+			}
+		})
+
+		t.Run("if its unable to open the specified log file", func(t *testing.T) {
+			cmd := &cobra.Command{}
+
+			cmd.Flags().String("log-level", "", "")
+			logFileName := cmd.Flags().String("log-file", "", "")
+			*logFileName = "test.log"
+
+			err := initLogging(viper.New())(cmd, nil)
+			if !assert.Error(t, err) {
+				return
+			}
+			if !assert.IsType(t, UnableToInitializeLoggerError{}, err) {
+				return
+			}
+		})
+	})
+}
+
 func TestLoadConfigFile(t *testing.T) {
 	t.Run("will not load config file", func(t *testing.T) {
 		t.Run("if the config file does not exist", func(t *testing.T) {
@@ -37,7 +77,12 @@ func TestLoadConfigFile(t *testing.T) {
 			if !assert.Error(t, err) {
 				return
 			}
-			if !assert.IsType(t, viper.ConfigFileNotFoundError{}, err) {
+			if !assert.IsType(t, UnableToLoadConfigFileError{}, err) {
+				return
+			}
+
+			loadErr := err.(UnableToLoadConfigFileError)
+			if !assert.IsType(t, viper.ConfigFileNotFoundError{}, loadErr.Cause) {
 				return
 			}
 		})
@@ -55,7 +100,12 @@ func TestLoadConfigFile(t *testing.T) {
 			if !assert.Error(t, err) {
 				return
 			}
-			if !assert.IsType(t, viper.ConfigParseError{}, err) {
+			if !assert.IsType(t, UnableToLoadConfigFileError{}, err) {
+				return
+			}
+
+			loadErr := err.(UnableToLoadConfigFileError)
+			if !assert.IsType(t, viper.ConfigParseError{}, loadErr.Cause) {
 				return
 			}
 		})
