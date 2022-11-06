@@ -65,9 +65,27 @@ func NewKafkaBus(cfg KafkaConfig) *KafkaBus {
 }
 
 func validateKafkaConfig(cfg KafkaConfig) error {
+	validators := []func(KafkaConfig) error{
+		validateKafkaLogger,
+		validateKafkaAddrs,
+	}
+	for _, validator := range validators {
+		err := validator(cfg)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateKafkaLogger(cfg KafkaConfig) error {
 	if cfg.Logger == nil {
 		return ErrMissingLogger
 	}
+	return nil
+}
+
+func validateKafkaAddrs(cfg KafkaConfig) error {
 	if cfg.Addresses == nil || len(cfg.Addresses) == 0 {
 		return ErrMissingKafkaAddrs
 	}
