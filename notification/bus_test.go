@@ -17,8 +17,9 @@ package notification
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	evryspb "github.com/z5labs/evrys/proto"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateNotification(t *testing.T) {

@@ -21,9 +21,9 @@ import (
 	"time"
 
 	evryspb "github.com/z5labs/evrys/proto"
-	"go.uber.org/zap"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func TestKafkaBus(t *testing.T) {
