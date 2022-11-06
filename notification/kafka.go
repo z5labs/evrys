@@ -16,19 +16,118 @@ package notification
 
 import (
 	"context"
+	"errors"
 
 	evryspb "github.com/z5labs/evrys/proto"
+
+	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
 )
 
+var kafkaBus = "kafka"
+
 // KafkaBus
-type KafkaBus struct{}
+type KafkaBus struct {
+	kafka *kafka.Writer
+
+	log *zap.Logger
+}
+
+// KafkaConfig
+type KafkaConfig struct {
+	Addresses              []string
+	AllowAutoTopicCreation bool
+	Logger                 *zap.Logger
+}
+
+var (
+	ErrMissingKafkaAddrs = errors.New("kafka addresses are required")
+)
 
 // NewKafkaBus
-func NewKafkaBus() *KafkaBus {
-	return &KafkaBus{}
+func NewKafkaBus(cfg KafkaConfig) *KafkaBus {
+	err := validateKafkaConfig(cfg)
+	if err != nil {
+		panic(ConfigurationError{
+			Bus:   kafkaBus,
+			Cause: err,
+		})
+	}
+
+	return &KafkaBus{
+		kafka: &kafka.Writer{
+			Addr:                   kafka.TCP(cfg.Addresses...),
+			AllowAutoTopicCreation: cfg.AllowAutoTopicCreation,
+		},
+		log: cfg.Logger,
+	}
+}
+
+func validateKafkaConfig(cfg KafkaConfig) error {
+	if cfg.Logger == nil {
+		return ErrMissingLogger
+	}
+	if cfg.Addresses == nil || len(cfg.Addresses) == 0 {
+		return ErrMissingKafkaAddrs
+	}
+	return nil
 }
 
 // Publish
-func (b *KafkaBus) Publish(ctx context.Context, n *evryspb.Notification) error {
+func (bus *KafkaBus) Publish(ctx context.Context, n *evryspb.Notification) error {
+	err := validateNotification(n)
+	if err != nil {
+		bus.log.Error(
+			"given an invalid notification for publishing",
+			zap.String("event_source", n.EventSource),
+			zap.String("event_id", n.EventId),
+			zap.String("event_type", n.EventType),
+			zap.Error(err),
+		)
+		return ValidationError{
+			Cause: err,
+		}
+	}
+
+	b, err := proto.Marshal(n)
+	if err != nil {
+		return MarshalError{
+			Protocol: "protobuf",
+			Cause:    err,
+		}
+	}
+
+	msg := kafka.Message{
+		Topic: n.EventType,
+		Key:   nil,
+		Value: b,
+	}
+	bus.log.Info(
+		"publishing event notification",
+		zap.String("event_source", n.EventSource),
+		zap.String("event_id", n.EventId),
+		zap.String("event_type", n.EventType),
+	)
+	err = bus.kafka.WriteMessages(ctx, msg)
+	if err != nil {
+		bus.log.Error(
+			"failed to publish event notification",
+			zap.String("event_source", n.EventSource),
+			zap.String("event_id", n.EventId),
+			zap.String("event_type", n.EventType),
+			zap.Error(err),
+		)
+		return Error{
+			Bus:   kafkaBus,
+			Cause: err,
+		}
+	}
+	bus.log.Info(
+		"published event notification",
+		zap.String("event_source", n.EventSource),
+		zap.String("event_id", n.EventId),
+		zap.String("event_type", n.EventType),
+	)
 	return nil
 }
