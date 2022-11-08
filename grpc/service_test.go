@@ -44,7 +44,7 @@ func TestEvrysService_GetEvent(t *testing.T) {
 				return
 			}
 
-			s := NewEvrysService(zap.L())
+			s := NewEvrysService(&mockEventStore{}, zap.L())
 
 			errChan := make(chan error, 1)
 			go func(ls net.Listener) {
@@ -96,7 +96,7 @@ func TestEvrysService_RecordEvent(t *testing.T) {
 				return
 			}
 
-			s := NewEvrysService(zap.L())
+			s := NewEvrysService(&mockEventStore{}, zap.L())
 
 			errChan := make(chan error, 1)
 			go func(ls net.Listener) {
@@ -148,7 +148,7 @@ func TestEvrysService_SliceEvents(t *testing.T) {
 				return
 			}
 
-			s := NewEvrysService(zap.L())
+			s := NewEvrysService(&mockEventStore{}, zap.L())
 
 			errChan := make(chan error, 1)
 			go func(ls net.Listener) {

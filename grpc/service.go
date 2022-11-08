@@ -29,22 +29,27 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// ErrServerStopped wraps grpc.ErrServerStopped
 var ErrServerStopped = grpc.ErrServerStopped
 
 var _ evryspb.EvrysServer = &EvrysService{}
 
+// EvrysService is defines the grpc for evrys and implements the interface from evrys proto
 type EvrysService struct {
 	evryspb.UnimplementedEvrysServer
-
-	log *zap.Logger
+	eventStore EventStore
+	log        *zap.Logger
 }
 
-func NewEvrysService(logger *zap.Logger) *EvrysService {
+// NewEvrysService creates an instance of EvrysService
+func NewEvrysService(eventStore EventStore, logger *zap.Logger) *EvrysService {
 	return &EvrysService{
-		log: logger,
+		eventStore: eventStore,
+		log:        logger,
 	}
 }
 
+// Serve creates and runs the grpc server
 func (s *EvrysService) Serve(ctx context.Context, ls net.Listener) error {
 	grpcServer := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 	evryspb.RegisterEvrysServer(grpcServer, s)
@@ -70,10 +75,12 @@ func (s *EvrysService) Serve(ctx context.Context, ls net.Listener) error {
 	}
 }
 
+// GetEvent retrieves an event from the event store
 func (s *EvrysService) GetEvent(ctx context.Context, req *evryspb.GetEventRequest) (*cloudeventpb.CloudEvent, error) {
 	return nil, status.Error(codes.NotFound, "")
 }
 
+// RecordEvent records an event in the event store
 func (s *EvrysService) RecordEvent(ctx context.Context, req *cloudeventpb.CloudEvent) (*evryspb.RecordEventResponse, error) {
 	event, err := format.FromProto(req)
 	if err != nil {
@@ -88,6 +95,7 @@ func (s *EvrysService) RecordEvent(ctx context.Context, req *cloudeventpb.CloudE
 	return new(evryspb.RecordEventResponse), nil
 }
 
+// SliceEvents retrieves multiple events from the event store
 func (s *EvrysService) SliceEvents(req *evryspb.SliceEventsRequest, stream evryspb.Evrys_SliceEventsServer) error {
 	s.log.Info("received slice request")
 	return nil

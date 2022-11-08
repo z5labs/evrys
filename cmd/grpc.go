@@ -45,7 +45,7 @@ func withServeGrpcCmd() func(*viper.Viper) *cobra.Command {
 				}
 				zap.L().Info("listening for grpc requests", zap.String("addr", addr))
 
-				evrys := grpc.NewEvrysService(zap.L())
+				evrys := grpc.NewEvrysService(nil, zap.L())
 				err = evrys.Serve(cmd.Context(), ls)
 				if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 					zap.L().Fatal(
