@@ -66,19 +66,15 @@ func (m *MongoConfig) getURI() string {
 
 // MongoEventStoreImpl is the event store implementation for mongodb
 type MongoEventStoreImpl struct {
-	config *MongoConfig
+	config MongoConfig
 	logger *zap.Logger
 	client *mongo.Client
 }
 
 // NewMongoEventStoreImpl constructs and initializes a *MongoEventStoreImpl
-func NewMongoEventStoreImpl(ctx context.Context, _config *MongoConfig) (*MongoEventStoreImpl, error) {
+func NewMongoEventStoreImpl(ctx context.Context, _config MongoConfig) (*MongoEventStoreImpl, error) {
 	if ctx == nil {
 		return nil, errors.New("context can not be nil")
-	}
-
-	if _config == nil {
-		return nil, errors.New("config can not be nil")
 	}
 
 	err := _config.Validate()

@@ -49,6 +49,11 @@ func (m *MarshalError) Error() string {
 	return fmt.Sprintf("failed to marshal %s to %s. %s", m.From, m.To, m.Err)
 }
 
+// Unwrap returns the inner error
+func (m *MarshalError) Unwrap() error {
+	return m.Err
+}
+
 // PutError defines an error when putting data into a database
 type PutError struct {
 	Source       string
@@ -68,6 +73,11 @@ func NewPutError(source, insertedType string, err error) *PutError {
 // Error returns a string form of the error and implements the error interface
 func (p *PutError) Error() string {
 	return fmt.Sprintf("failed to put %s into %s. %s", p.InsertedType, p.Source, p.Err)
+}
+
+// Unwrap returns the inner error
+func (p *PutError) Unwrap() error {
+	return p.Err
 }
 
 // ValidationError defines an error where a config is not valid
