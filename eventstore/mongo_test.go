@@ -27,8 +27,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - port none", func(t *testing.T) {
@@ -39,8 +38,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - port invalid", func(t *testing.T) {
@@ -52,8 +50,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - no username", func(t *testing.T) {
@@ -64,8 +61,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - no password", func(t *testing.T) {
@@ -76,8 +72,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - no database", func(t *testing.T) {
@@ -88,8 +83,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Password:   "dfasdfad",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - no collection", func(t *testing.T) {
@@ -100,8 +94,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Password: "dfasdfad",
 			Database: "dfasdfas",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("valid config", func(t *testing.T) {
@@ -133,8 +126,7 @@ func TestNewMongoEventStoreImpl(t *testing.T) {
 			Collection: "dfads",
 		}
 		_, err := NewMongoEventStoreImpl(context.TODO(), conf)
-		var valError *ValidationError
-		req.ErrorAs(err, &valError, "expected validation error")
+		req.ErrorAs(err, &ValidationErrors, "expected validation error")
 	})
 
 	t.Run("mongo connection error", func(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/cloudevents/sdk-go/v2/event"
+	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -16,48 +16,19 @@ import (
 
 // MongoConfig defines the configuration to connect to mongodb
 type MongoConfig struct {
-	Host string `mapstructure:"host"`
-	Port string `mapstructure:"port"`
+	Host string `mapstructure:"host" validate:"hostname,required"`
+	Port string `mapstructure:"port" validate:"numeric,required"`
 
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
+	Username string `mapstructure:"username" validate:"required"`
+	Password string `mapstructure:"password" validate:"required"`
 
-	Database   string `mapstructure:"database"`
-	Collection string `mapstructure:"collection"`
+	Database   string `mapstructure:"database" validate:"required"`
+	Collection string `mapstructure:"collection" validate:"required"`
 }
 
 // Validate ensures mongo config is correct
 func (m *MongoConfig) Validate() error {
-	if m.Host == "" {
-		return NewValidationError("MongoConfig", "Host", "Empty string")
-	}
-
-	if m.Port == "" {
-		return NewValidationError("MongoConfig", "Port", "Empty string")
-	} else {
-		_, err := strconv.Atoi(m.Port)
-		if err != nil {
-			return NewValidationError("MongoConfig", "Port", "not a number")
-		}
-	}
-
-	if m.Username == "" {
-		return NewValidationError("MongoConfig", "Username", "Empty string")
-	}
-
-	if m.Password == "" {
-		return NewValidationError("MongoConfig", "Password", "Empty string")
-	}
-
-	if m.Database == "" {
-		return NewValidationError("MongoConfig", "Database", "Empty string")
-	}
-
-	if m.Collection == "" {
-		return NewValidationError("MongoConfig", "Collection", "Empty string")
-	}
-
-	return nil
+	return validator.New().Struct(m)
 }
 
 func (m *MongoConfig) getURI() string {

@@ -2,6 +2,8 @@ package eventstore
 
 import (
 	"fmt"
+
+	"github.com/go-playground/validator/v10"
 )
 
 // ConnectionError defines an error when connecting to an outside service
@@ -80,22 +82,8 @@ func (p *PutError) Unwrap() error {
 	return p.Err
 }
 
-// ValidationError defines an error where a config is not valid
-type ValidationError struct {
-	Type   string
-	Field  string
-	Reason string
-}
+// InvalidValidationError Alias for validator package validator.InvalidValidationError
+var InvalidValidationError = validator.InvalidValidationError{}
 
-// NewValidationError creates a new ValidationError
-func NewValidationError(_type, field, reason string) *ValidationError {
-	return &ValidationError{
-		Type:   _type,
-		Field:  field,
-		Reason: reason,
-	}
-}
-
-func (v *ValidationError) Error() string {
-	return fmt.Sprintf("field %s on type %s not valid. Reason: %s", v.Field, v.Type, v.Reason)
-}
+// ValidationErrors Alias for validator package validator.InvalidValidationError
+var ValidationErrors = validator.ValidationErrors{}
