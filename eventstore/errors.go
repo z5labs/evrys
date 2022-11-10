@@ -25,7 +25,7 @@ func (c *ConnectionError) Error() string {
 	return fmt.Sprintf("failed to connect to %s. %s", c.Source, c.Err)
 }
 
-// Unwrap returns the inner error
+// Unwrap returns the inner error, making it compatible with errors.Unwrap
 func (c *ConnectionError) Unwrap() error {
 	return c.Err
 }
@@ -51,7 +51,7 @@ func (m *MarshalError) Error() string {
 	return fmt.Sprintf("failed to marshal %s to %s. %s", m.From, m.To, m.Err)
 }
 
-// Unwrap returns the inner error
+// Unwrap returns the inner error, making it compatible with errors.Unwrap
 func (m *MarshalError) Unwrap() error {
 	return m.Err
 }
@@ -77,7 +77,7 @@ func (p *PutError) Error() string {
 	return fmt.Sprintf("failed to put %s into %s. %s", p.InsertedType, p.Source, p.Err)
 }
 
-// Unwrap returns the inner error
+// Unwrap returns the inner error, making it compatible with errors.Unwrap
 func (p *PutError) Unwrap() error {
 	return p.Err
 }
