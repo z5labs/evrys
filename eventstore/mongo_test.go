@@ -27,8 +27,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - port none", func(t *testing.T) {
@@ -39,8 +38,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - port invalid", func(t *testing.T) {
@@ -52,8 +50,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - no username", func(t *testing.T) {
@@ -64,8 +61,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - no password", func(t *testing.T) {
@@ -76,8 +72,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - no database", func(t *testing.T) {
@@ -88,8 +83,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Password:   "dfasdfad",
 			Collection: "dfads",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("invalid config - no collection", func(t *testing.T) {
@@ -100,8 +94,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 			Password: "dfasdfad",
 			Database: "dfasdfas",
 		}
-		var valError *ValidationError
-		req.ErrorAs(conf.Validate(), &valError, "config should not have validated")
+		req.ErrorAs(conf.Validate(), &ValidationErrors, "config should not have validated")
 	})
 
 	t.Run("valid config", func(t *testing.T) {
@@ -120,13 +113,8 @@ func TestMongoConfig_Validate(t *testing.T) {
 func TestNewMongoEventStoreImpl(t *testing.T) {
 	req := require.New(t)
 	t.Run("nil ctx", func(t *testing.T) {
-		_, err := NewMongoEventStoreImpl(nil, nil)
+		_, err := NewMongoEventStoreImpl(nil, MongoConfig{})
 		req.ErrorContains(err, "context can not be nil", "error is not target error")
-	})
-
-	t.Run("nil config", func(t *testing.T) {
-		_, err := NewMongoEventStoreImpl(context.TODO(), nil)
-		req.ErrorContains(err, "config can not be nil", "error is not target error")
 	})
 
 	t.Run("invalid config", func(t *testing.T) {
@@ -137,9 +125,8 @@ func TestNewMongoEventStoreImpl(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		_, err := NewMongoEventStoreImpl(context.TODO(), &conf)
-		var valError *ValidationError
-		req.ErrorAs(err, &valError, "expected validation error")
+		_, err := NewMongoEventStoreImpl(context.TODO(), conf)
+		req.ErrorAs(err, &ValidationErrors, "expected validation error")
 	})
 
 	t.Run("mongo connection error", func(t *testing.T) {
@@ -151,7 +138,7 @@ func TestNewMongoEventStoreImpl(t *testing.T) {
 			Database:   "testdb",
 			Collection: "testcoll",
 		}
-		_, err := NewMongoEventStoreImpl(context.TODO(), &conf)
+		_, err := NewMongoEventStoreImpl(context.TODO(), conf)
 		var connErr *ConnectionError
 		req.ErrorAs(err, &connErr, "expected connection error")
 	})
@@ -190,7 +177,7 @@ func TestMongoIntegration(t *testing.T) {
 	// impl setup
 	db := "testdb"
 	collName := "testcoll"
-	config := &MongoConfig{
+	config := MongoConfig{
 		Host:       "localhost",
 		Port:       "27017",
 		Username:   "root",
@@ -230,45 +217,47 @@ func TestMongoIntegration(t *testing.T) {
 	req.Len(results, 1, "returned slice not of correct length")
 
 	result := results[0]
-	var idv, spec, source, _type, sub, dct, tm, dt = false, false, false, false, false, false, false, false
+	var idCheck, specVersionCheck, sourceCheck, typeCheck, subjectCheck, dataContentTypeCheck,
+		timeCheck, dataCheck = false, false, false, false, false, false, false, false
 	for key, value := range result.Map() {
 		switch key {
 		case "id":
 			req.Equal(id, value, "id not expected value")
-			idv = true
+			idCheck = true
 			continue
 		case "specversion":
 			req.Equal("1.0", value, "spec version not expected value")
-			spec = true
+			specVersionCheck = true
 			continue
 		case "source":
 			req.Equal("mongo_test", value, "source not expected value")
-			source = true
+			sourceCheck = true
 			continue
 		case "type":
 			req.Equal("test", value, "type not expected value")
-			_type = true
+			typeCheck = true
 			continue
 		case "subject":
 			req.Equal("test", value, "subject not expected value")
-			sub = true
+			subjectCheck = true
 			continue
 		case "datacontenttype":
 			req.Equal("application/json", value, "datacontenttype not expected value")
-			dct = true
+			dataContentTypeCheck = true
 			continue
 		case "time":
 			req.Equal(curTime.Format(time.RFC3339Nano), value, "time is not equal")
-			tm = true
+			timeCheck = true
 			continue
 		case "data":
 			d := value.(primitive.D)
 			v := d[0]
 			req.Equal("hello", v.Key, "key not expected value")
 			req.Equal("world", v.Value, "value not of expected value")
-			dt = true
+			dataCheck = true
 			continue
 		}
 	}
-	req.True(idv && spec && source && _type && sub && dct && tm && dt, "all values have not been verified")
+	req.True(idCheck && specVersionCheck && sourceCheck && typeCheck && subjectCheck && dataContentTypeCheck && timeCheck && dataCheck,
+		"all values have not been verified")
 }

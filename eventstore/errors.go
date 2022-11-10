@@ -2,6 +2,8 @@ package eventstore
 
 import (
 	"fmt"
+
+	"github.com/go-playground/validator/v10"
 )
 
 // ConnectionError defines an error when connecting to an outside service
@@ -23,7 +25,7 @@ func (c *ConnectionError) Error() string {
 	return fmt.Sprintf("failed to connect to %s. %s", c.Source, c.Err)
 }
 
-// Unwrap returns the inner error
+// Unwrap returns the inner error, making it compatible with errors.Unwrap
 func (c *ConnectionError) Unwrap() error {
 	return c.Err
 }
@@ -49,6 +51,11 @@ func (m *MarshalError) Error() string {
 	return fmt.Sprintf("failed to marshal %s to %s. %s", m.From, m.To, m.Err)
 }
 
+// Unwrap returns the inner error, making it compatible with errors.Unwrap
+func (m *MarshalError) Unwrap() error {
+	return m.Err
+}
+
 // PutError defines an error when putting data into a database
 type PutError struct {
 	Source       string
@@ -70,22 +77,13 @@ func (p *PutError) Error() string {
 	return fmt.Sprintf("failed to put %s into %s. %s", p.InsertedType, p.Source, p.Err)
 }
 
-// ValidationError defines an error where a config is not valid
-type ValidationError struct {
-	Type   string
-	Field  string
-	Reason string
+// Unwrap returns the inner error, making it compatible with errors.Unwrap
+func (p *PutError) Unwrap() error {
+	return p.Err
 }
 
-// NewValidationError creates a new ValidationError
-func NewValidationError(_type, field, reason string) *ValidationError {
-	return &ValidationError{
-		Type:   _type,
-		Field:  field,
-		Reason: reason,
-	}
-}
+// InvalidValidationError Alias for validator package validator.InvalidValidationError
+var InvalidValidationError = validator.InvalidValidationError{}
 
-func (v *ValidationError) Error() string {
-	return fmt.Sprintf("field %s on type %s not valid. Reason: %s", v.Field, v.Type, v.Reason)
-}
+// ValidationErrors Alias for validator package validator.InvalidValidationError
+var ValidationErrors = validator.ValidationErrors{}
