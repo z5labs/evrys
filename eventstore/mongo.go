@@ -35,26 +35,26 @@ func (m *MongoConfig) getURI() string {
 	return fmt.Sprintf("mongodb://%s:%s@%s:%s", m.Username, m.Password, m.Host, m.Port)
 }
 
-// MongoEventStoreImpl is the event store implementation for mongodb
-type MongoEventStoreImpl struct {
+// Mongo is the event store implementation for mongodb
+type Mongo struct {
 	config MongoConfig
 	logger *zap.Logger
 	client *mongo.Client
 }
 
-// NewMongoEventStoreImpl constructs and initializes a *MongoEventStoreImpl
-func NewMongoEventStoreImpl(ctx context.Context, _config MongoConfig) (*MongoEventStoreImpl, error) {
+// NewMongo constructs and initializes a *Mongo
+func NewMongo(ctx context.Context, config MongoConfig) (*Mongo, error) {
 	if ctx == nil {
 		return nil, errors.New("context can not be nil")
 	}
 
-	err := _config.Validate()
+	err := config.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid config, %w", err)
 	}
 
-	impl := &MongoEventStoreImpl{
-		config: _config,
+	impl := &Mongo{
+		config: config,
 		logger: zap.L().With(zap.String("source", "MongoEventStoreImpl")),
 	}
 
@@ -66,7 +66,7 @@ func NewMongoEventStoreImpl(ctx context.Context, _config MongoConfig) (*MongoEve
 	return impl, nil
 }
 
-func (m *MongoEventStoreImpl) init(ctx context.Context) error {
+func (m *Mongo) init(ctx context.Context) error {
 	m.logger.Debug("attempting to open connection to mongo")
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(m.config.getURI()))
 	if err != nil {
@@ -88,34 +88,82 @@ func (m *MongoEventStoreImpl) init(ctx context.Context) error {
 	return nil
 }
 
-// PutEvent puts an event into mongo and implements the interface PutEvent
-func (m *MongoEventStoreImpl) PutEvent(ctx context.Context, event *event.Event) error {
+// AppendEvent puts an event into mongo and implements the interface PutEvent
+func (m *Mongo) AppendEvent(ctx context.Context, event *event.Event) error {
 	coll := m.client.Database(m.config.Database).Collection(m.config.Collection)
 
-	m.logger.Debug("attempting to marshal event to json")
+	m.logger.Debug("attempting to marshal event to json",
+		zap.String("event_id", event.ID()),
+		zap.String("event_type", event.Type()),
+		zap.String("event_source", event.Source()),
+		zap.String("event_subject", event.Subject()),
+	)
 	raw, err := event.MarshalJSON()
 	if err != nil {
-		m.logger.Error("failed to marshal event to json", zap.Error(err))
+		m.logger.Error("failed to marshal event to json",
+			zap.Error(err),
+			zap.String("event_id", event.ID()),
+			zap.String("event_type", event.Type()),
+			zap.String("event_source", event.Source()),
+			zap.String("event_subject", event.Subject()),
+		)
 		return NewMarshalError("*event.Event", "json", err)
 	}
-	m.logger.Debug("successfully marshaled event to json")
+	m.logger.Debug("successfully marshaled event to json",
+		zap.String("event_id", event.ID()),
+		zap.String("event_type", event.Type()),
+		zap.String("event_source", event.Source()),
+		zap.String("event_subject", event.Subject()),
+	)
 
-	m.logger.Debug("attempting to marshal json to bson")
+	m.logger.Debug("attempting to marshal json to bson",
+		zap.String("event_id", event.ID()),
+		zap.String("event_type", event.Type()),
+		zap.String("event_source", event.Source()),
+		zap.String("event_subject", event.Subject()),
+	)
 	var bdoc interface{}
 	err = bson.UnmarshalExtJSON(raw, true, &bdoc)
 	if err != nil {
-		m.logger.Error("failed to marshal json to bson", zap.Error(err))
+		m.logger.Error("failed to marshal json to bson",
+			zap.Error(err),
+			zap.String("event_id", event.ID()),
+			zap.String("event_type", event.Type()),
+			zap.String("event_source", event.Source()),
+			zap.String("event_subject", event.Subject()),
+		)
 		return NewMarshalError("json", "bson", err)
 	}
-	m.logger.Debug("successfully marshaled json to bson")
+	m.logger.Debug("successfully marshaled json to bson",
+		zap.String("event_id", event.ID()),
+		zap.String("event_type", event.Type()),
+		zap.String("event_source", event.Source()),
+		zap.String("event_subject", event.Subject()),
+	)
 
-	m.logger.Debug("attempting to insert event")
+	m.logger.Debug("attempting to insert event",
+		zap.String("event_id", event.ID()),
+		zap.String("event_type", event.Type()),
+		zap.String("event_source", event.Source()),
+		zap.String("event_subject", event.Subject()),
+	)
 	_, err = coll.InsertOne(ctx, bdoc)
 	if err != nil {
-		m.logger.Error("failed to insert event", zap.Error(err))
+		m.logger.Error("failed to insert event",
+			zap.Error(err),
+			zap.String("event_id", event.ID()),
+			zap.String("event_type", event.Type()),
+			zap.String("event_source", event.Source()),
+			zap.String("event_subject", event.Subject()),
+		)
 		return NewPutError("mongo", "event", err)
 	}
-	m.logger.Debug("successfully inserted event")
+	m.logger.Info("successfully inserted event",
+		zap.String("event_id", event.ID()),
+		zap.String("event_type", event.Type()),
+		zap.String("event_source", event.Source()),
+		zap.String("event_subject", event.Subject()),
+	)
 
 	return nil
 }
