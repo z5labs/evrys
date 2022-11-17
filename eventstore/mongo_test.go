@@ -138,8 +138,20 @@ func TestNewMongoEventStoreImpl(t *testing.T) {
 			Database:   "testdb",
 			Collection: "testcoll",
 		}
-		_, err := NewMongo(context.TODO(), conf)
-		var connErr *ConnectionError
+		m, err := NewMongo(context.TODO(), conf)
+		req.NoError(err, "no error expected creating mongo instance")
+
+		_event := event.New()
+		curTime := time.Now().UTC()
+		_event.SetID("some_random_id")
+		_event.SetSubject("test")
+		_event.SetSource("mongo_test")
+		_event.SetTime(curTime)
+		_event.SetSpecVersion(event.CloudEventsVersionV1)
+		_event.SetType("test")
+		_event.SetData(*event.StringOfApplicationJSON(), map[string]interface{}{"hello": "world"})
+		err = m.Append(context.TODO(), &_event)
+		var connErr *PutError
 		req.ErrorAs(err, &connErr, "expected connection error")
 	})
 }
