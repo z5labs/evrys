@@ -10,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.uber.org/zap"
 )
 
@@ -75,21 +74,12 @@ func (m *Mongo) init(ctx context.Context) error {
 	}
 	m.logger.Debug("successfully connected to mongo")
 
-	// attempt ping
-	m.logger.Debug("attempting ping")
-	err = client.Ping(ctx, readpref.Primary())
-	if err != nil {
-		m.logger.Error("failed to ping mongo", zap.Error(err))
-		return NewConnectionError("mongo", err)
-	}
-	m.logger.Debug("successfully pinged mongo")
-
 	m.client = client
 	return nil
 }
 
-// AppendEvent puts an event into mongo and implements the interface PutEvent
-func (m *Mongo) AppendEvent(ctx context.Context, event *event.Event) error {
+// Append puts an event into mongo and implements the interface PutEvent
+func (m *Mongo) Append(ctx context.Context, event *event.Event) error {
 	coll := m.client.Database(m.config.Database).Collection(m.config.Collection)
 
 	m.logger.Debug("attempting to marshal event to json",

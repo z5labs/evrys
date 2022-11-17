@@ -202,7 +202,7 @@ func TestMongoIntegration(t *testing.T) {
 	_event.SetData(*event.StringOfApplicationJSON(), map[string]interface{}{"hello": "world"})
 
 	// actual test
-	err = mongoImpl.AppendEvent(ctx, &_event)
+	err = mongoImpl.Append(ctx, &_event)
 	req.NoError(err, "failed to put event")
 
 	coll := client.Database(db).Collection(collName)
