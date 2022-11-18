@@ -5,6 +5,7 @@
 **Event Storage:**
 - [ ] [Amazon DynamoDB](https://aws.amazon.com/dynamodb/)
 - [ ] [Azure CosmosDB](https://azure.microsoft.com/en-us/products/cosmos-db)
+- [x] [MongoDB](https://www.mongodb.com/)
 
 **Caching:**
 - [ ] [Redis](https://redis.io/)
