@@ -29,7 +29,7 @@ import (
 type mockEventStore struct {
 }
 
-func (m *mockEventStore) PutEvent(ctx context.Context, event *event.Event) error {
+func (m *mockEventStore) Append(ctx context.Context, event *event.Event) error {
 	return nil
 }
 
