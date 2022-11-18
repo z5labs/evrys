@@ -113,7 +113,7 @@ func TestMongoConfig_Validate(t *testing.T) {
 func TestNewMongoEventStoreImpl(t *testing.T) {
 	req := require.New(t)
 	t.Run("nil ctx", func(t *testing.T) {
-		_, err := NewMongoEventStoreImpl(nil, MongoConfig{})
+		_, err := NewMongo(nil, MongoConfig{})
 		req.ErrorContains(err, "context can not be nil", "error is not target error")
 	})
 
@@ -125,7 +125,7 @@ func TestNewMongoEventStoreImpl(t *testing.T) {
 			Database:   "dfasdfas",
 			Collection: "dfads",
 		}
-		_, err := NewMongoEventStoreImpl(context.TODO(), conf)
+		_, err := NewMongo(context.TODO(), conf)
 		req.ErrorAs(err, &ValidationErrors, "expected validation error")
 	})
 
@@ -138,8 +138,20 @@ func TestNewMongoEventStoreImpl(t *testing.T) {
 			Database:   "testdb",
 			Collection: "testcoll",
 		}
-		_, err := NewMongoEventStoreImpl(context.TODO(), conf)
-		var connErr *ConnectionError
+		m, err := NewMongo(context.TODO(), conf)
+		req.NoError(err, "no error expected creating mongo instance")
+
+		_event := event.New()
+		curTime := time.Now().UTC()
+		_event.SetID("some_random_id")
+		_event.SetSubject("test")
+		_event.SetSource("mongo_test")
+		_event.SetTime(curTime)
+		_event.SetSpecVersion(event.CloudEventsVersionV1)
+		_event.SetType("test")
+		_event.SetData(*event.StringOfApplicationJSON(), map[string]interface{}{"hello": "world"})
+		err = m.Append(context.TODO(), &_event)
+		var connErr *PutError
 		req.ErrorAs(err, &connErr, "expected connection error")
 	})
 }
@@ -186,7 +198,7 @@ func TestMongoIntegration(t *testing.T) {
 		Collection: collName,
 	}
 
-	mongoImpl, err := NewMongoEventStoreImpl(ctx, config)
+	mongoImpl, err := NewMongo(ctx, config)
 	req.NoError(err, "failed to create mongo event store")
 
 	// data setup
@@ -202,7 +214,7 @@ func TestMongoIntegration(t *testing.T) {
 	_event.SetData(*event.StringOfApplicationJSON(), map[string]interface{}{"hello": "world"})
 
 	// actual test
-	err = mongoImpl.PutEvent(ctx, &_event)
+	err = mongoImpl.Append(ctx, &_event)
 	req.NoError(err, "failed to put event")
 
 	coll := client.Database(db).Collection(collName)
