@@ -188,6 +188,31 @@ func (kc *KafkaCluster) Start(ctx context.Context) error {
 	return nil
 }
 
+type KafkaClusterTerminationError struct {
+	KafkaContainerErr     error
+	ZookeeperContainerErr error
+}
+
+func (e KafkaClusterTerminationError) Error() string {
+	return fmt.Sprintf(
+		"failed to terminate kafka cluster containers: \n\tkafka container: %s\n\tzookeeper container: %s",
+		e.KafkaContainerErr,
+		e.ZookeeperContainerErr,
+	)
+}
+
+func (kc *KafkaCluster) Terminate(ctx context.Context) error {
+	kafkaErr := kc.kafka.Terminate(ctx)
+	zookeeperErr := kc.zookeeper.Terminate(ctx)
+	if kafkaErr == nil && zookeeperErr == nil {
+		return nil
+	}
+	return KafkaClusterTerminationError{
+		KafkaContainerErr:     kafkaErr,
+		ZookeeperContainerErr: zookeeperErr,
+	}
+}
+
 // GetKafkaHost
 func (kc *KafkaCluster) GetKafkaHost(ctx context.Context) (string, error) {
 	host, err := kc.kafka.Host(ctx)

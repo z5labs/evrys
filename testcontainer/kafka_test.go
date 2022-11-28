@@ -123,5 +123,50 @@ func TestKafkaCluster(t *testing.T) {
 			}
 		})
 
+		// TODO: figure out how to get the rest of the constructor code to fail
+	})
+
+	t.Run("will fail to start", func(t *testing.T) {
+		t.Run("if the zookeeper container fails to start", func(t *testing.T) {
+			t.Fail() // TODO
+		})
+
+		t.Run("if the kafka container fails to start", func(t *testing.T) {
+			t.Fail() // TODO
+		})
+
+		t.Run("if it can not create a temp file", func(t *testing.T) {
+			t.Fail() // TODO
+		})
+
+		t.Run("if it can not get the kafka host", func(t *testing.T) {
+			t.Fail() // TODO
+		})
+
+		t.Run("if it can not copy the temp file to the kafka container", func(t *testing.T) {
+			t.Fail() // TODO
+		})
+	})
+
+	t.Run("will successfully start", func(t *testing.T) {
+		t.Run("if using the default config", func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			kafka, err := NewKafkaCluster(ctx)
+			if !assert.Nil(t, err) {
+				return
+			}
+
+			err = kafka.Start(ctx)
+			if !assert.Nil(t, err) {
+				return
+			}
+
+			err = kafka.Terminate(ctx)
+			if !assert.Nil(t, err) {
+				return
+			}
+		})
 	})
 }
