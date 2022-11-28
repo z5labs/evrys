@@ -46,22 +46,24 @@ var (
 )
 
 // NewKafkaBus
-func NewKafkaBus(cfg KafkaConfig) *KafkaBus {
+func NewKafkaBus(cfg KafkaConfig) (*KafkaBus, error) {
 	err := validateKafkaConfig(cfg)
 	if err != nil {
-		panic(ConfigurationError{
+		return nil, ConfigurationError{
 			Bus:   kafkaBus,
 			Cause: err,
-		})
+		}
 	}
 
-	return &KafkaBus{
+	bus := &KafkaBus{
 		kafka: &kafka.Writer{
 			Addr:                   kafka.TCP(cfg.Addresses...),
 			AllowAutoTopicCreation: cfg.AllowAutoTopicCreation,
 		},
 		log: cfg.Logger,
 	}
+
+	return bus, nil
 }
 
 func validateKafkaConfig(cfg KafkaConfig) error {
@@ -118,7 +120,6 @@ func (bus *KafkaBus) Publish(ctx context.Context, n *evryspb.Notification) error
 
 	msg := kafka.Message{
 		Topic: n.EventType,
-		Key:   nil,
 		Value: b,
 	}
 	bus.log.Info(

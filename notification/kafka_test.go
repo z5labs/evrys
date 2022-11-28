@@ -107,16 +107,19 @@ func TestKafkaBus(t *testing.T) {
 
 	t.Run("will fail to publish notification", func(t *testing.T) {
 		t.Run("if given an invalid notification", func(t *testing.T) {
-			bus := NewKafkaBus(KafkaConfig{
+			bus, err := NewKafkaBus(KafkaConfig{
 				Addresses: []string{"localhost:10000"},
 				Logger:    zap.L(),
 			})
+			if !assert.Nil(t, err) {
+				return
+			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
 			n := &evryspb.Notification{}
-			err := bus.Publish(ctx, n)
+			err = bus.Publish(ctx, n)
 			if !assert.Error(t, err) {
 				return
 			}
@@ -126,10 +129,13 @@ func TestKafkaBus(t *testing.T) {
 		})
 
 		t.Run("if kafka is unavailable", func(t *testing.T) {
-			bus := NewKafkaBus(KafkaConfig{
+			bus, err := NewKafkaBus(KafkaConfig{
 				Addresses: []string{"localhost:10000"},
 				Logger:    zap.L(),
 			})
+			if !assert.Nil(t, err) {
+				return
+			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
@@ -139,7 +145,7 @@ func TestKafkaBus(t *testing.T) {
 				EventId:     "id",
 				EventType:   "type",
 			}
-			err := bus.Publish(ctx, n)
+			err = bus.Publish(ctx, n)
 			if !assert.Error(t, err) {
 				return
 			}
@@ -155,6 +161,47 @@ func TestKafkaBus(t *testing.T) {
 				return
 			}
 			if !assert.IsType(t, &net.OpError{}, busErr.Cause) {
+				t.Log(busErr.Cause)
+				return
+			}
+		})
+
+		t.Run("if no topic exists and auto creation is disabled", func(t *testing.T) {
+			// TODO: stand up kafka with testcontainers
+
+			bus, err := NewKafkaBus(KafkaConfig{
+				Addresses:              []string{"localhost:10000"},
+				Logger:                 zap.L(),
+				AllowAutoTopicCreation: false,
+			})
+			if !assert.Nil(t, err) {
+				return
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			n := &evryspb.Notification{
+				EventSource: "source",
+				EventId:     "id",
+				EventType:   "type",
+			}
+			err = bus.Publish(ctx, n)
+			if !assert.Error(t, err) {
+				return
+			}
+			if !assert.IsType(t, Error{}, err) {
+				return
+			}
+
+			busErr := err.(Error)
+			if !assert.Equal(t, "kafka", busErr.Bus) {
+				return
+			}
+			if !assert.Error(t, busErr.Cause) {
+				return
+			}
+			if !assert.IsType(t, nil, busErr.Cause) {
 				t.Log(busErr.Cause)
 				return
 			}
