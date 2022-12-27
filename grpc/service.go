@@ -16,8 +16,10 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 	"net"
 
+	"github.com/go-playground/validator/v10"
 	evryspb "github.com/z5labs/evrys/proto"
 
 	format "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
@@ -34,19 +36,27 @@ var ErrServerStopped = grpc.ErrServerStopped
 
 var _ evryspb.EvrysServer = &EvrysService{}
 
+// EvrysServiceConfig stores configuration values for evrys service
+type EvrysServiceConfig struct {
+	EventStore EventStore  `validate:"required"`
+	Log        *zap.Logger `validate:"required"`
+}
+
 // EvrysService is defines the grpc for evrys and implements the interface from evrys proto
 type EvrysService struct {
 	evryspb.UnimplementedEvrysServer
-	eventStore EventStore
-	log        *zap.Logger
+	config EvrysServiceConfig
 }
 
 // NewEvrysService creates an instance of EvrysService
-func NewEvrysService(eventStore EventStore, logger *zap.Logger) *EvrysService {
-	return &EvrysService{
-		eventStore: eventStore,
-		log:        logger,
+func NewEvrysService(config EvrysServiceConfig) (*EvrysService, error) {
+	if err := validator.New().Struct(&config); err != nil {
+		return nil, fmt.Errorf("failed to validate config")
 	}
+
+	return &EvrysService{
+		config: config,
+	}, nil
 }
 
 // Serve creates and runs the grpc server
@@ -86,7 +96,7 @@ func (s *EvrysService) RecordEvent(ctx context.Context, req *cloudeventpb.CloudE
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	s.log.Info(
+	s.config.Log.Info(
 		"received event",
 		zap.String("event_id", event.ID()),
 		zap.String("event_source", event.Source()),
@@ -97,6 +107,6 @@ func (s *EvrysService) RecordEvent(ctx context.Context, req *cloudeventpb.CloudE
 
 // SliceEvents retrieves multiple events from the event store
 func (s *EvrysService) SliceEvents(req *evryspb.SliceEventsRequest, stream evryspb.Evrys_SliceEventsServer) error {
-	s.log.Info("received slice request")
+	s.config.Log.Info("received slice request")
 	return nil
 }

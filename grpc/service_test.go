@@ -26,12 +26,29 @@ import (
 	evryspb "github.com/z5labs/evrys/proto"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
+
+func TestNewEvrysService(t *testing.T) {
+	s, err := NewEvrysService(EvrysServiceConfig{
+		EventStore: nil,
+		Log:        nil,
+	})
+	require.Nil(t, s, "service should be nil")
+	require.Error(t, err, "new evrys service should return an error")
+
+	s, err = NewEvrysService(EvrysServiceConfig{
+		EventStore: &mockEventStore{},
+		Log:        zap.L(),
+	})
+	require.NotNil(t, s, "service should not be nil")
+	require.NoError(t, err, "new evrys service should not return an error")
+}
 
 func TestEvrysService_GetEvent(t *testing.T) {
 	t.Run("will return not found", func(t *testing.T) {
@@ -44,7 +61,13 @@ func TestEvrysService_GetEvent(t *testing.T) {
 				return
 			}
 
-			s := NewEvrysService(&mockEventStore{}, zap.L())
+			s, err := NewEvrysService(EvrysServiceConfig{
+				EventStore: &mockEventStore{},
+				Log:        zap.L(),
+			})
+			if !assert.NoError(t, err, "error should be nil") {
+				return
+			}
 
 			errChan := make(chan error, 1)
 			go func(ls net.Listener) {
@@ -96,7 +119,13 @@ func TestEvrysService_RecordEvent(t *testing.T) {
 				return
 			}
 
-			s := NewEvrysService(&mockEventStore{}, zap.L())
+			s, err := NewEvrysService(EvrysServiceConfig{
+				EventStore: &mockEventStore{},
+				Log:        zap.L(),
+			})
+			if !assert.NoError(t, err, "error should be nil") {
+				return
+			}
 
 			errChan := make(chan error, 1)
 			go func(ls net.Listener) {
@@ -148,7 +177,13 @@ func TestEvrysService_SliceEvents(t *testing.T) {
 				return
 			}
 
-			s := NewEvrysService(&mockEventStore{}, zap.L())
+			s, err := NewEvrysService(EvrysServiceConfig{
+				EventStore: &mockEventStore{},
+				Log:        zap.L(),
+			})
+			if !assert.NoError(t, err, "error should be nil") {
+				return
+			}
 
 			errChan := make(chan error, 1)
 			go func(ls net.Listener) {
