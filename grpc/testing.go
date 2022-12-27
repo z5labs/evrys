@@ -21,9 +21,17 @@ import (
 	evryspb "github.com/z5labs/evrys/proto"
 
 	cloudeventpb "github.com/cloudevents/sdk-go/binding/format/protobuf/v2/pb"
+	"github.com/cloudevents/sdk-go/v2/event"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+type mockEventStore struct {
+}
+
+func (m *mockEventStore) Append(ctx context.Context, event *event.Event) error {
+	return nil
+}
 
 func MockEvrys(opts ...func(MockEvrysService) MockEvrysService) MockEvrysService {
 	s := MockEvrysService{}
