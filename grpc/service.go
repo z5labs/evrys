@@ -102,6 +102,32 @@ func (s *EvrysService) RecordEvent(ctx context.Context, req *cloudeventpb.CloudE
 		zap.String("event_source", event.Source()),
 		zap.String("event_type", event.Type()),
 	)
+
+	err = event.Validate()
+	if err != nil {
+		s.config.Log.Error(
+			"cloud event failed to validate",
+			zap.Error(err),
+			zap.String("event_id", event.ID()),
+			zap.String("event_source", event.Source()),
+			zap.String("event_type", event.Type()),
+		)
+		return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("cloud event failed validation: %s", err.Error()))
+	}
+
+	err = s.config.EventStore.Append(ctx, event)
+	if err != nil {
+		s.config.Log.Error(
+			"failed to append event to event store",
+			zap.Error(err),
+			zap.String("event_id", event.ID()),
+			zap.String("event_source", event.Source()),
+			zap.String("event_type", event.Type()),
+		)
+
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to append event to event store: %s", err.Error()))
+	}
+
 	return new(evryspb.RecordEventResponse), nil
 }
 
