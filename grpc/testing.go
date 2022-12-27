@@ -16,6 +16,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	evryspb "github.com/z5labs/evrys/proto"
@@ -27,9 +28,14 @@ import (
 )
 
 type mockEventStore struct {
+	Fail bool
 }
 
 func (m *mockEventStore) Append(ctx context.Context, event *event.Event) error {
+	if m.Fail {
+		return errors.New("test fail")
+	}
+
 	return nil
 }
 
