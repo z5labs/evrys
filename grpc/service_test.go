@@ -26,12 +26,29 @@ import (
 	evryspb "github.com/z5labs/evrys/proto"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
+
+func TestNewEvrysService(t *testing.T) {
+	s, err := NewEvrysService(EvrysServiceConfig{
+		EventStore: nil,
+		Log:        nil,
+	})
+	require.Nil(t, s, "service should be nil")
+	require.Error(t, err, "new evrys service should return an error")
+
+	s, err = NewEvrysService(EvrysServiceConfig{
+		EventStore: &mockEventStore{},
+		Log:        zap.L(),
+	})
+	require.NotNil(t, s, "service should not be nil")
+	require.NoError(t, err, "new evrys service should not return an error")
+}
 
 func TestEvrysService_GetEvent(t *testing.T) {
 	t.Run("will return not found", func(t *testing.T) {
@@ -44,7 +61,13 @@ func TestEvrysService_GetEvent(t *testing.T) {
 				return
 			}
 
-			s := NewEvrysService(zap.L())
+			s, err := NewEvrysService(EvrysServiceConfig{
+				EventStore: &mockEventStore{},
+				Log:        zap.L(),
+			})
+			if !assert.NoError(t, err, "error should be nil") {
+				return
+			}
 
 			errChan := make(chan error, 1)
 			go func(ls net.Listener) {
@@ -96,7 +119,74 @@ func TestEvrysService_RecordEvent(t *testing.T) {
 				return
 			}
 
-			s := NewEvrysService(zap.L())
+			s, err := NewEvrysService(EvrysServiceConfig{
+				EventStore: &mockEventStore{},
+				Log:        zap.L(),
+			})
+			if !assert.NoError(t, err, "error should be nil") {
+				return
+			}
+
+			errChan := make(chan error, 1)
+			go func(ls net.Listener) {
+				defer close(errChan)
+
+				err := s.Serve(ctx, ls)
+				if err != nil && err != ErrServerStopped {
+					errChan <- err
+				}
+			}(ls)
+
+			cc, err := grpc.Dial(ls.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if !assert.Nil(t, err) {
+				return
+			}
+			ev := event.New()
+			ev.SetID("adsf")
+			ev.SetSource("asdf")
+			ev.SetSubject("asdfasfd")
+			ev.SetType("asdfas")
+			ev.SetData(event.ApplicationJSON, map[string]interface{}{"adfasd": 1})
+			ev.SetTime(time.Now().UTC())
+			event, err := format.ToProto(&ev)
+			if !assert.Nil(t, err) {
+				return
+			}
+
+			client := evryspb.NewEvrysClient(cc)
+			_, err = client.RecordEvent(ctx, event)
+			if !assert.Nil(t, err) {
+				return
+			}
+
+			cancel()
+
+			select {
+			case <-ctx.Done():
+			case err := <-errChan:
+				if !assert.Nil(t, err) {
+					return
+				}
+			}
+		})
+	})
+	t.Run("will fail", func(t *testing.T) {
+		t.Run("event validation fail", func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			ls, err := net.Listen("tcp", ":0")
+			if !assert.Nil(t, err) {
+				return
+			}
+
+			s, err := NewEvrysService(EvrysServiceConfig{
+				EventStore: &mockEventStore{},
+				Log:        zap.L(),
+			})
+			if !assert.NoError(t, err, "error should be nil") {
+				return
+			}
 
 			errChan := make(chan error, 1)
 			go func(ls net.Listener) {
@@ -113,16 +203,90 @@ func TestEvrysService_RecordEvent(t *testing.T) {
 				return
 			}
 
-			event, err := format.ToProto(&event.Event{})
+			// empty event should fail
+			ev := event.New()
+
+			event, err := format.ToProto(&ev)
+			if !assert.NoError(t, err) {
+				return
+			}
+
+			client := evryspb.NewEvrysClient(cc)
+			_, err = client.RecordEvent(ctx, event)
+			if !assert.Error(t, err) {
+				return
+			}
+
+			grpcStatus := status.Convert(err)
+			require.Equal(t, codes.FailedPrecondition.String(), grpcStatus.Code().String(), "expected failed precondition error")
+
+			cancel()
+
+			select {
+			case <-ctx.Done():
+			case err := <-errChan:
+				if !assert.Nil(t, err) {
+					return
+				}
+			}
+		})
+
+		t.Run("event append fail", func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			ls, err := net.Listen("tcp", ":0")
+			if !assert.Nil(t, err) {
+				return
+			}
+
+			s, err := NewEvrysService(EvrysServiceConfig{
+				EventStore: &mockEventStore{
+					Fail: true,
+				},
+				Log: zap.L(),
+			})
+			if !assert.NoError(t, err, "error should be nil") {
+				return
+			}
+
+			errChan := make(chan error, 1)
+			go func(ls net.Listener) {
+				defer close(errChan)
+
+				err := s.Serve(ctx, ls)
+				if err != nil && err != ErrServerStopped {
+					errChan <- err
+				}
+			}(ls)
+
+			cc, err := grpc.Dial(ls.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if !assert.Nil(t, err) {
+				return
+			}
+
+			// empty event should fail
+			ev := event.New()
+			ev.SetID("adsf")
+			ev.SetSource("asdf")
+			ev.SetSubject("asdfasfd")
+			ev.SetType("asdfas")
+			ev.SetData(event.ApplicationJSON, map[string]interface{}{"adfasd": 1})
+			ev.SetTime(time.Now().UTC())
+
+			event, err := format.ToProto(&ev)
 			if !assert.Nil(t, err) {
 				return
 			}
 
 			client := evryspb.NewEvrysClient(cc)
 			_, err = client.RecordEvent(ctx, event)
-			if !assert.Nil(t, err) {
+			if !assert.Error(t, err) {
 				return
 			}
+
+			grpcStatus := status.Convert(err)
+			require.Equal(t, codes.Internal.String(), grpcStatus.Code().String(), "expected internal error")
 
 			cancel()
 
@@ -148,7 +312,13 @@ func TestEvrysService_SliceEvents(t *testing.T) {
 				return
 			}
 
-			s := NewEvrysService(zap.L())
+			s, err := NewEvrysService(EvrysServiceConfig{
+				EventStore: &mockEventStore{},
+				Log:        zap.L(),
+			})
+			if !assert.NoError(t, err, "error should be nil") {
+				return
+			}
 
 			errChan := make(chan error, 1)
 			go func(ls net.Listener) {
