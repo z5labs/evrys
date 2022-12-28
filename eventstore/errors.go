@@ -82,6 +82,34 @@ func (p *PutError) Unwrap() error {
 	return p.Err
 }
 
+// QueryError defines an error when putting data into a database
+type QueryError struct {
+	Source      string
+	QueriedType string
+	Err         error
+	IsNotFound  bool
+}
+
+// NewQueryError creates a new PutError
+func NewQueryError(source, queriedType string, isNotFound bool, err error) *QueryError {
+	return &QueryError{
+		Source:      source,
+		QueriedType: queriedType,
+		Err:         err,
+		IsNotFound:  isNotFound,
+	}
+}
+
+// Error returns a string form of the error and implements the error interface
+func (p *QueryError) Error() string {
+	return fmt.Sprintf("failed to put %s into %s. NotFound: %v. Error: %s", p.QueriedType, p.Source, p.IsNotFound, p.Err)
+}
+
+// Unwrap returns the inner error, making it compatible with errors.Unwrap
+func (p *QueryError) Unwrap() error {
+	return p.Err
+}
+
 // InvalidValidationError Alias for validator package validator.InvalidValidationError
 var InvalidValidationError = validator.InvalidValidationError{}
 

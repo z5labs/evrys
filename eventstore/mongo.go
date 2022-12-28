@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/go-playground/validator/v10"
@@ -156,4 +157,79 @@ func (m *Mongo) Append(ctx context.Context, event *event.Event) error {
 	)
 
 	return nil
+}
+
+func (m *Mongo) GetByID(ctx context.Context, id string) (*event.Event, error) {
+	m.logger.Info(
+		"attempting to lookup event by id",
+		zap.String("id", id),
+	)
+
+	coll := m.client.Database(m.config.Database).Collection(m.config.Collection)
+
+	filter := bson.D{{Key: "id", Value: id}}
+	result := coll.FindOne(ctx, filter)
+	if result.Err() != nil {
+		if errors.Is(result.Err(), mongo.ErrNoDocuments) {
+			m.logger.Error(
+				"event with id does not exist",
+				zap.String("id", id),
+				zap.Error(result.Err()),
+			)
+			return nil, NewQueryError("mongo", "*event.Event", true, result.Err())
+		}
+		m.logger.Error(
+			"failed to lookup event by id",
+			zap.String("id", id),
+			zap.Error(result.Err()),
+		)
+		return nil, NewQueryError("mongo", "*event.Event", false, result.Err())
+	}
+
+	var b bson.D
+	err := result.Decode(&b)
+	if err != nil {
+		return nil, err
+	}
+
+	// remove mongo id field since cloud events doesn't like it
+	// it will always be the first index
+	b, err = removeElement(b, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	jsb, err := bson.MarshalExtJSON(b, false, false)
+	if err != nil {
+		return nil, err
+	}
+
+	ev := event.New()
+	err = ev.UnmarshalJSON(jsb)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ev, nil
+}
+
+func (m *Mongo) EventsBefore(ctx context.Context, until time.Time) (events []*event.Event, cursor any, err error) {
+	return nil, nil, nil
+}
+
+func removeElement[T any](s []T, i int) ([]T, error) {
+	// s is [1,2,3,4,5,6], i is 2
+
+	// perform bounds checking first to prevent a panic!
+	if i >= len(s) || i < 0 {
+		return nil, fmt.Errorf("index is out of range. index is %d with slice length %d", i, len(s))
+	}
+
+	// copy first element (1) to index `i`. At this point,
+	// `s` will be [1,2,1,4,5,6]
+	s[i] = s[0]
+	// Remove the first element from the slice by truncating it
+	// This way, `s` will now include all the elements from index 1
+	// until the element at the last index
+	return s[1:], nil
 }

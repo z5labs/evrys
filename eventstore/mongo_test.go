@@ -272,4 +272,23 @@ func TestMongoIntegration(t *testing.T) {
 	}
 	req.True(idCheck && specVersionCheck && sourceCheck && typeCheck && subjectCheck && dataContentTypeCheck && timeCheck && dataCheck,
 		"all values have not been verified")
+
+	// validated its there
+
+	// test single lookup
+	lookupEv, err := mongoImpl.GetByID(ctx, id)
+	req.NoError(err, "should not fail")
+	req.NotNil(lookupEv)
+	req.Equal(id, lookupEv.ID(), "ids should match")
+	req.Equal("1.0", lookupEv.SpecVersion(), "spec version should match")
+	req.Equal("mongo_test", lookupEv.Source(), "source not expected value")
+	req.Equal("test", lookupEv.Type(), "type not expected value")
+	req.Equal("test", lookupEv.Subject(), "subject not expected value")
+	req.Equal(curTime, lookupEv.Time(), "time is not equal")
+	var m map[string]interface{}
+	err = lookupEv.DataAs(&m)
+	req.NoError(err, "should be able to convert")
+	value, ok := m["hello"]
+	req.True(ok, "key 'hello' should exist")
+	req.Equal("world", value, "value does not match expected")
 }
