@@ -1,0 +1,37 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "eventstore",
+    srcs = [
+        "errors.go",
+        "mongo.go",
+        "store.go",
+    ],
+    importpath = "github.com/z5labs/evrys/lib/eventstore",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_cloudevents_sdk_go_v2//event",
+        "@com_github_go_playground_validator_v10//:validator",
+        "@org_mongodb_go_mongo_driver//bson",
+        "@org_mongodb_go_mongo_driver//mongo",
+        "@org_mongodb_go_mongo_driver//mongo/options",
+        "@org_uber_go_zap//:zap",
+    ],
+)
+
+go_test(
+    name = "eventstore_test",
+    srcs = ["mongo_test.go"],
+    embed = [":eventstore"],
+    deps = [
+        "@com_github_cloudevents_sdk_go_v2//event",
+        "@com_github_stretchr_testify//require",
+        "@com_github_testcontainers_testcontainers_go//:testcontainers-go",
+        "@com_github_testcontainers_testcontainers_go//wait",
+        "@org_mongodb_go_mongo_driver//bson",
+        "@org_mongodb_go_mongo_driver//bson/primitive",
+        "@org_mongodb_go_mongo_driver//mongo",
+        "@org_mongodb_go_mongo_driver//mongo/options",
+        "@org_mongodb_go_mongo_driver//mongo/readpref",
+    ],
+)

@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "cmd",
+    srcs = [
+        "cmd.go",
+        "eventlog.go",
+        "serve.go",
+        "serve_grpc.go",
+    ],
+    importpath = "github.com/z5labs/evrys/svc-event-log/cmd",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_spf13_cobra//:cobra",
+        "@com_github_spf13_viper//:viper",
+        "@org_uber_go_zap//:zap",
+        "@org_uber_go_zap//zapcore",
+    ],
+)
