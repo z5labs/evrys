@@ -40,3 +40,6 @@ terraform.rc
 # Editors
 .vscode
 .idea
+
+# Bazel
+bazel-*

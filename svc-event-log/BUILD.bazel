@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "svc-event-log_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/z5labs/evrys/svc-event-log",
+    visibility = ["//visibility:private"],
+    deps = ["//svc-event-log/cmd"],
+)
+
+go_binary(
+    name = "svc-event-log",
+    embed = [":svc-event-log_lib"],
+    visibility = ["//visibility:public"],
+)
