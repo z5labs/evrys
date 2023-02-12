@@ -22,10 +22,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/z5labs/evrys/svc-event-log/eventlogpb"
+
 	"github.com/cloudevents/sdk-go/binding/format/protobuf/v2/pb"
 	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/stretchr/testify/assert"
-	"github.com/z5labs/evrys/svc-event-log/eventlogpb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
