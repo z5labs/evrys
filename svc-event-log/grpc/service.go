@@ -21,10 +21,13 @@ import (
 
 	"github.com/z5labs/evrys/lib/eventstore"
 	"github.com/z5labs/evrys/svc-event-log/eventlogpb"
+
+	format "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -89,7 +92,48 @@ type service struct {
 
 // Append
 func (s *service) Append(ctx context.Context, req *eventlogpb.AppendRequest) (*emptypb.Empty, error) {
-	return nil, nil
+	if req.Event == nil {
+		s.log.Warn("client attempted to append nil cloudevent to log")
+		return nil, status.Error(codes.InvalidArgument, "cloudevent must be non-nil")
+	}
+
+	ev, err := format.FromProto(req.Event)
+	if err != nil {
+		s.log.Error("failed to convert cloudevent protobuf to generic cloudevent")
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	s.log.Debug(
+		"received event to append to log",
+		zap.String("event_id", ev.ID()),
+		zap.String("event_type", ev.Type()),
+		zap.String("event_source", ev.Source()),
+	)
+
+	err = ev.Validate()
+	if err != nil {
+		s.log.Error(
+			"received invalid cloudevent",
+			zap.String("event_id", ev.ID()),
+			zap.String("event_type", ev.Type()),
+			zap.String("event_source", ev.Source()),
+			zap.Error(err),
+		)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = s.store.Append(ctx, ev)
+	if err != nil {
+		s.log.Error(
+			"failed to append cloudevent to log",
+			zap.String("event_id", ev.ID()),
+			zap.String("event_type", ev.Type()),
+			zap.String("event_source", ev.Source()),
+			zap.Error(err),
+		)
+		return nil, status.Error(codes.Unavailable, err.Error())
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 // Iterate
