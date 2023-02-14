@@ -132,6 +132,12 @@ func (s *service) Append(ctx context.Context, req *eventlogpb.AppendRequest) (*e
 		)
 		return nil, status.Error(codes.Unavailable, err.Error())
 	}
+	s.log.Debug(
+		"appended event to log",
+		zap.String("event_id", ev.ID()),
+		zap.String("event_type", ev.Type()),
+		zap.String("event_source", ev.Source()),
+	)
 
 	return &emptypb.Empty{}, nil
 }
